@@ -1,0 +1,13 @@
+zmq
+h5py
+numpy
+pytest
+flake8
+event_model
+pytz
+tzlocal
+suitcase-jsonl
+pydantic
+jupyter
+jupyter_contrib_nbextensions
+area_detector_handlers

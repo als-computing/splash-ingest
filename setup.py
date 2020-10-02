@@ -28,7 +28,7 @@ setup(
     packages=find_packages(exclude=["docs", "tests"]),
     entry_points={
         "databroker.handlers": [
-            "HDF5Slice = area_detector_handlers.handlers:HDF5DatasetSliceHandler"
+            "MultiKeySlice = splash_ingest.handlers:MultiKeyHDF5DatasetSliceHandler"
         ]
     },
     include_package_data=True,

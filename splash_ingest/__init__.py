@@ -79,7 +79,9 @@ class MappedHD5Ingestor():
             spec=self._mapping.resource_spec,
             root=self._reference_root_name,
             resource_path=self._file.filename,  # need to calculate a relative path
-            resource_kwargs={})
+            resource_kwargs={
+                "key": "/exchange/data"
+            })
         yield 'resource', hd5_resource.resource_doc
 
         # produce documents for each stream
@@ -119,7 +121,9 @@ class MappedHD5Ingestor():
                     if (len(dataset.shape)) == 1:
                         event_data[transformed_key] = dataset[()]
                     else:
-                        datum = hd5_resource.compose_datum(datum_kwargs={'point_number': x})  # need kwargs for HDF5 datum
+                        datum = hd5_resource.compose_datum(datum_kwargs={
+                                "key": "/exchange/data",
+                                "point_number": x})  # need kwargs for HDF5 datum
                         yield 'datum', datum
                         event_data[transformed_key] = datum['datum_id']
 
@@ -159,8 +163,7 @@ class MappedHD5Ingestor():
                 dtype='number',
                 source='file',
                 external='FILESTORE:',
-                # shape=hdf5_dataset.shape[1::],
-                shape=(5, 5),
+                shape=hdf5_dataset.shape[1::],
                 units=units
             )
             transformed_key = self._transform_key(key)

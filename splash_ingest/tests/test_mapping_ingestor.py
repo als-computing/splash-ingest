@@ -15,7 +15,7 @@ mapping_dict = {
         'name': 'test name',
         'description': 'test descriptions',
         'version': '42',
-        'resource_spec': 'AD_HDF5',
+        'resource_spec': 'MultiKeySlice',
         'metadata_mappings': {
             '/measurement/sample/name': 'dataset',
             '/measurement/instrument/name': 'end_station',
@@ -26,16 +26,16 @@ mapping_dict = {
                 "time_stamp": '/process/acquisition/time_stamp',
                 "mapping_fields": {
                     '/exchange/data': 'data',
-                    # '/process/acquisition/sample_position_x': 'tile_xmovedist'
+                    '/process/acquisition/sample_position_x': 'tile_xmovedist'
                 }
             },
-            # "darks": {
-            #     "time_stamp": '/process/acquisition/time_stamp',
-            #     "mapping_fields": {
-            #         '/exchange/dark': 'dark',
-            #         '/process/acquisition/sample_position_x': 'tile_xmovedist'
-            #     }
-            # }
+            "darks": {
+                "time_stamp": '/process/acquisition/time_stamp',
+                "mapping_fields": {
+                    '/exchange/dark': 'dark',
+                    '/process/acquisition/sample_position_x': 'tile_xmovedist'
+                }
+            }
         }
     }
 
@@ -123,13 +123,13 @@ def test_hdf5_mapped_ingestor(sample_file):
     assert start_found, 'a start document was produced'
     assert stop_found, 'a stop document was produced'
 
-    # assert len(descriptors) == 2, 'return two descriptors'
-    # assert descriptors[0]['name'] == 'primary', 'first descriptor is primary'
-    # assert descriptors[1]['name'] == 'darks', 'second descriptor is darks'
-    # assert len(descriptors[0]['data_keys'].keys()) == 2, 'primary has two data_keys'
+    assert len(descriptors) == 2, 'return two descriptors'
+    assert descriptors[0]['name'] == 'primary', 'first descriptor is primary'
+    assert descriptors[1]['name'] == 'darks', 'second descriptor is darks'
+    assert len(descriptors[0]['data_keys'].keys()) == 2, 'primary has two data_keys'
 
-    # assert len(result_datums) == num_frames_primary + num_frames_darks
-    # assert len(result_events) == num_frames_primary + num_frames_darks
+    assert len(result_datums) == num_frames_primary + num_frames_darks
+    assert len(result_events) == num_frames_primary + num_frames_darks
 
     run = run_cache.retrieve()
     stream = run['primary'].to_dask()
@@ -141,7 +141,7 @@ def test_mapped_ingestor_bad_stream_field(sample_file):
         'name': 'test name',
         'description': 'test descriptions',
         'version': '42',
-        'resource_spec': 'AD_HDF5',
+        'resource_spec': 'MultiKeySlice',
         'metadata_mappings': {
             '/measurement/sample/name': 'dataset',
         },
@@ -165,7 +165,7 @@ def test_mapped_ingestor_bad_metadata_field(sample_file):
         'name': 'test name',
         'description': 'test descriptions',
         'version': '42',
-        'resource_spec': 'test_spec',
+        'resource_spec': 'MultiKeySlice',
         'metadata_mappings': {
             'raise_exception': 'dataset',
         },
@@ -189,7 +189,7 @@ def test_timestamp_error(sample_file):
         'name': 'test name',
         'description': 'test descriptions',
         'version': '42',
-        'resource_spec': 'test_spec',
+        'resource_spec': 'MultiKeySlice',
         'metadata_mappings': {},
         'stream_mappings': {
             "do_not_cross": {

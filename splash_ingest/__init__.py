@@ -1,6 +1,14 @@
-from typing import Dict
+import logging
+from typing import List
 import event_model
-from .model import Mapping, StreamMapping, EMDescriptor
+from .model import (
+    Mapping,
+    StreamMapping,
+    StreamMappingField
+)
+
+logger = logging.getLogger(__name__)
+
 
 class MappingNotFoundError(Exception):
     def __init__(self, location, missing_field):
@@ -110,26 +118,33 @@ class MappedHD5Ingestor():
                     raise EmptyTimestampsError(stream_name, stream_timestamp_field)
                 event_data = {}
                 event_timestamps = {}
+                filled_fields = {}
                 # create datums and events
-                for field_name in stream_mappings[stream_name].mapping_fields:
-                    # Go through each field in the stream. For
-                    # 1D fields, extract the value. For greater
-                    # than 1D, build a datum and references that in the event.
-                    dataset = self._file[field_name]
-                    transformed_key = self._transform_key(field_name)
-                    event_timestamps[transformed_key] = time_stamp_dataset[x]
-                    if (len(dataset.shape)) == 1:
-                        event_data[transformed_key] = dataset[()]
-                    else:
+                for field in stream_mappings[stream_name].mapping_fields:
+                    # Go through each field in the stream. If field not marked
+                    # as external, extract the value. Otherwise create a datum
+                    dataset = self._file[field.name]
+                    encoded_key = encode_key(field.name)
+                    event_timestamps[encoded_key] = time_stamp_dataset[x]
+                    if field.external:
+                        if logger.isEnabledFor(logging.INFO):
+                            logger.info(f'event for {field.external} inserted as datum')
+                        # field's data provided in datum
                         datum = hd5_resource.compose_datum(datum_kwargs={
-                                "key": "/exchange/data",
+                                "key": encoded_key,
                                 "point_number": x})  # need kwargs for HDF5 datum
                         yield 'datum', datum
-                        event_data[transformed_key] = datum['datum_id']
+                        event_data[encoded_key] = datum['datum_id']
+                        filled_fields[encoded_key] = False
+                    else:
+                        # field's data provided in event
+                        if logger.isEnabledFor(logging.INFO):
+                            logger.info(f'event for {field.external} inserted in event')
+                        event_data[encoded_key] = dataset[x]
 
                 yield 'event', stream_bundle.compose_event(
                     data=event_data,
-                    filled={transformed_key: False},
+                    filled=filled_fields,
                     seq_num=x,
                     timestamps=event_timestamps
                 )
@@ -142,43 +157,53 @@ class MappedHD5Ingestor():
         for key in self._mapping.metadata_mappings.keys():
             # event_model won't accept / in metadata keys, so
             # we replace them with :, after removing the leading slash
-            transformed_key = self._transform_key(key)
+            encoded_key = encode_key(key)
             try:
-                metadata[transformed_key] = self._file[key][()]
+                metadata[encoded_key] = self._file[key][()]
             except Exception:
                 raise MappingNotFoundError('metadata', key)
         return metadata
 
-    def _extract_stream_descriptor_keys(self, stream_mapping: Dict[str, str]):
+    def _extract_stream_descriptor_keys(self, stream_mapping: StreamMapping):
         descriptors = {}
-        for key in stream_mapping.keys():
+        for mapping_field in stream_mapping:
             # build an event_model descriptor
             try:
-                hdf5_dataset = self._file[key]
+                hdf5_dataset = self._file[mapping_field.name]
             except Exception:
-                raise MappingNotFoundError('stream', key)
+                raise MappingNotFoundError('stream', mapping_field.name)
             units = hdf5_dataset.attrs.get('units')
-            # TODO add a way to discriminate between extenral and internal fields
-            descriptor = EMDescriptor(
-                dtype='number',
-                source='file',
-                external='FILESTORE:',
-                shape=hdf5_dataset.shape[1::],
-                units=units
-            )
-            transformed_key = self._transform_key(key)
-            descriptors[transformed_key] = descriptor.dict()
+            # descriptor = EMDescriptor(
+            #         dtype='number',
+            #         source='file',
+            #         shape=hdf5_dataset.shape[1::],
+            #         units=units)
+            descriptor = dict(
+                    dtype='number',
+                    source='file',
+                    shape=hdf5_dataset.shape[1::],
+                    units=units)
+            if mapping_field.external:
+                descriptor['external'] = 'FILESTORE:'
+
+            encoded_key = encode_key(mapping_field.name)
+            descriptors[encoded_key] = descriptor
         return descriptors
 
-    def _transform_key(self, key):
-        return key[1:].replace("/", ":")
+
+def encode_key(key):
+    return key.replace("/", ":")
 
 
-def calc_num_events(stream_mappings, file):
+def decode_key(key):
+    return key.replace(":", "/")
+
+
+def calc_num_events(mapping_fields: List[StreamMappingField], file):
     # grab the first dataset referenced in the map,
     # then see how many events using first dimension of shape
     # of first dataset
-    if len(stream_mappings) == 0:
+    if len(mapping_fields) == 0:
         return 0
-    key = next(iter(stream_mappings.keys()))
-    return file[key].shape[0]
+    name = mapping_fields[0].name
+    return file[name].shape[0]

@@ -4,16 +4,28 @@ projections = [
                 "version": "42.0.0",
                 "configuration": {},
                 "projection": {
-                    '/entry/instrument/detector/data': {
+                    'data': {
                         'type': 'linked',
                         'location': 'event',
                         'stream': 'primary',
-                        'field': 'entry/instrument/detector/data',
+                        'field': ':exchange:data',
                     },
-#                     'sample_name': {
-#                         'type': 'configuration', 
-#                         "field": "/measurement/sample/name",
-#                     }
+                    'darks': {
+                        'type': 'linked',
+                        'location': 'event',
+                        'stream': 'darks',
+                        'field': ':exchange:dark',
+                    },
+                    'sample_name': {
+                        'type': 'configuration', 
+                        "field": ":measurement:sample:name",
+                        'location': 'start',
+                    },
+                    'instrument_name':{
+                       'type': 'configuration', 
+                        "field": ":measurement:instrument:name",
+                        'location': 'start', 
+                    }
                 }
             }
         ]

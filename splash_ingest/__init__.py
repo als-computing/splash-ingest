@@ -207,3 +207,7 @@ def calc_num_events(mapping_fields: List[StreamMappingField], file):
         return 0
     name = mapping_fields[0].name
     return file[name].shape[0]
+
+from ._version import get_versions
+__version__ = get_versions()['version']
+del get_versions

@@ -1,0 +1,2 @@
+include versioneer.py
+include splash_ingest/_version.py

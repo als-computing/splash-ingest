@@ -16,14 +16,15 @@ with open(path.join(here, 'requirements.txt')) as requirements_file:
 
 
 setup(
-    name='splash_ingestors',
+    name='splash_ingest',
     version=versioneer.get_version(),
     cmdclass=versioneer.get_cmdclass(),
     description="Different ingestors used in Splash",
     # long_description=readme,
     author="ALS Computing Group",
     author_email="dmcreynolds@lbl.gov",
-    url="https://github.com/als-computing/splash-ingestors",
+    url="https://github.com/als-computing/splash-ingest",
+    download_url="https://github.com/als-computing/splash-ingest/archive/v0.1.tar.gz",
     python_requires=">=3.7",
     packages=find_packages(exclude=["docs", "tests"]),
     entry_points={
@@ -42,8 +43,9 @@ setup(
     install_requires=requirements,
     license="BSD (3-clause)",
     classifiers=[
-        'Development Status :: 2 - Pre-Alpha',
+        'Development Status :: 3 - Alpha',
         'Natural Language :: English',
         'Programming Language :: Python :: 3',
+        'License :: OSI Approved :: BSD License',
     ],
 )

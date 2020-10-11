@@ -24,7 +24,8 @@ setup(
     author="ALS Computing Group",
     author_email="dmcreynolds@lbl.gov",
     url="https://github.com/als-computing/splash-ingest",
-    download_url="https://github.com/als-computing/splash-ingest/archive/v0.1.tar.gz",
+    download_url="https://github.com/als-computing/splash-ingest/archive/v0.1.1.tar.gzz",
+                   
     python_requires=">=3.7",
     packages=find_packages(exclude=["docs", "tests"]),
     entry_points={

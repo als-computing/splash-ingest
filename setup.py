@@ -6,8 +6,9 @@ import versioneer
 
 here = path.abspath(path.dirname(__file__))
 
-# with open(path.join(here, 'README.rst'), encoding='utf-8') as readme_file:
-#     readme = readme_file.read()
+# Get the long description from the README file
+with open(path.join(here, 'README.md'), encoding='utf-8') as f:
+    long_description = f.read()
 
 with open(path.join(here, 'requirements.txt')) as requirements_file:
     # Parse requirements.txt, ignoring any commented-out lines.
@@ -25,7 +26,8 @@ setup(
     author_email="dmcreynolds@lbl.gov",
     url="https://github.com/als-computing/splash-ingest",
     download_url="https://github.com/als-computing/splash-ingest/archive/v0.1.1.tar.gzz",
-                   
+    long_description=long_description,
+    long_description_content_type='text/markdown',
     python_requires=">=3.7",
     packages=find_packages(exclude=["docs", "tests"]),
     entry_points={

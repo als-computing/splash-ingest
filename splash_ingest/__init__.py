@@ -61,7 +61,7 @@ class MappedHD5Ingestor():
         Several things to note about what documnets are produced:
     
         - run_stop : one run stop document will be produced. Fields will be added
-        at the root level that correspond to the metadata_mappings section of the Mappings.
+        at the root level that correspond to the md_mappings section of the Mappings.
         Additionally, if projections are provided in the init, they will be added at the root.
 
         - descriptor: one descriptor will be produced for every stream in the stream_mappings of the provided Mappings
@@ -123,8 +123,8 @@ class MappedHD5Ingestor():
                 for field in stream_mappings[stream_name].mapping_fields:
                     # Go through each field in the stream. If field not marked
                     # as external, extract the value. Otherwise create a datum
-                    dataset = self._file[field.name]
-                    encoded_key = encode_key(field.name)
+                    dataset = self._file[field.field]
+                    encoded_key = encode_key(field.field)
                     event_timestamps[encoded_key] = time_stamp_dataset[x]
                     if field.external:
                         if logger.isEnabledFor(logging.INFO):
@@ -154,14 +154,14 @@ class MappedHD5Ingestor():
 
     def _extract_metadata(self):
         metadata = {}
-        for key in self._mapping.metadata_mappings.keys():
+        for mapping in self._mapping.md_mappings:
             # event_model won't accept / in metadata keys, so
             # we replace them with :, after removing the leading slash
-            encoded_key = encode_key(key)
+            encoded_key = encode_key(mapping.field)
             try:
-                metadata[encoded_key] = self._file[key][()]
+                metadata[encoded_key] = self._file[mapping.field][()]
             except Exception:
-                raise MappingNotFoundError('metadata', key)
+                raise MappingNotFoundError('metadata', mapping.field)
         return metadata
 
     def _extract_stream_descriptor_keys(self, stream_mapping: StreamMapping):
@@ -169,15 +169,10 @@ class MappedHD5Ingestor():
         for mapping_field in stream_mapping:
             # build an event_model descriptor
             try:
-                hdf5_dataset = self._file[mapping_field.name]
+                hdf5_dataset = self._file[mapping_field.field]
             except Exception:
-                raise MappingNotFoundError('stream', mapping_field.name)
+                raise MappingNotFoundError('stream', mapping_field.field)
             units = hdf5_dataset.attrs.get('units')
-            # descriptor = EMDescriptor(
-            #         dtype='number',
-            #         source='file',
-            #         shape=hdf5_dataset.shape[1::],
-            #         units=units)
             descriptor = dict(
                     dtype='number',
                     source='file',
@@ -186,7 +181,7 @@ class MappedHD5Ingestor():
             if mapping_field.external:
                 descriptor['external'] = 'FILESTORE:'
 
-            encoded_key = encode_key(mapping_field.name)
+            encoded_key = encode_key(mapping_field.field)
             descriptors[encoded_key] = descriptor
         return descriptors
 
@@ -205,7 +200,7 @@ def calc_num_events(mapping_fields: List[StreamMappingField], file):
     # of first dataset
     if len(mapping_fields) == 0:
         return 0
-    name = mapping_fields[0].name
+    name = mapping_fields[0].field
     return file[name].shape[0]
 
 from ._version import get_versions

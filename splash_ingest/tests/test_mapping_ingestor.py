@@ -24,24 +24,24 @@ mapping_dict = {
         'description': 'test descriptions',
         'version': '42',
         'resource_spec': 'MultiKeySlice',
-        'metadata_mappings': {
-            '/measurement/sample/name': 'dataset',
-            '/measurement/instrument/name': 'end_station',
-            '/measurement/instrument/source/beamline': 'beamline',
-        },
+        'md_mappings': [
+            {"field": '/measurement/sample/name'},
+            {"field": '/measurement/instrument/name'},
+            {"field": '/measurement/instrument/source/beamline'},
+        ],
         'stream_mappings': {
             "primary": {
                 "time_stamp": '/process/acquisition/time_stamp',
                 "mapping_fields": [
-                    {'name': '/exchange/data', 'external': True},
-                    {'name': '/process/acquisition/sample_position_x', 'description': 'tile_xmovedist'}
+                    {'field': '/exchange/data', 'external': True},
+                    {'field': '/process/acquisition/sample_position_x', 'description': 'tile_xmovedist'}
                 ]
             },
             "darks": {
                 "time_stamp": '/process/acquisition/time_stamp',
                 "mapping_fields": [
-                    {'name': '/exchange/dark', 'external': True},
-                    {'name': '/process/acquisition/sample_position_x', 'description': 'tile_xmovedist'}
+                    {'field': '/exchange/dark', 'external': True},
+                    {'field': '/process/acquisition/sample_position_x', 'description': 'tile_xmovedist'}
                 ]
             }
         }
@@ -51,7 +51,7 @@ mapping_dict = {
 def test_build_mapping():
     mapping = Mapping(**mapping_dict)
     assert mapping.name == 'test name'
-    assert mapping.stream_mappings['primary'].mapping_fields[0].name == '/exchange/data'
+    assert mapping.stream_mappings['primary'].mapping_fields[0].field == '/exchange/data'
 
 
 @pytest.fixture
@@ -148,15 +148,15 @@ def test_mapped_ingestor_bad_stream_field(sample_file):
         'description': 'test descriptions',
         'version': '42',
         'resource_spec': 'MultiKeySlice',
-        'metadata_mappings': {
-            '/measurement/sample/name': 'dataset',
-        },
+        'md_mappings': [
+            {'field': '/measurement/sample/name'}
+        ],
         'stream_mappings':
         {
             "primary": { 
                 "time_stamp": '/does/not/exist',
                 "mapping_fields": [
-                    {"name": "raise_exception"}
+                    {"field": "raise_exception"}
                 ]
             },
         }
@@ -172,9 +172,9 @@ def test_mapped_ingestor_bad_metadata_field(sample_file):
         'description': 'test descriptions',
         'version': '42',
         'resource_spec': 'MultiKeySlice',
-        'metadata_mappings': {
-            'raise_exception': 'dataset',
-        },
+        'md_mappings': [
+            {"field": 'raise_exception'},
+        ],
         'stream_mappings': {}
     }
     ingestor = MappedHD5Ingestor(Mapping(**mapping_dict_bad_metadata_field), sample_file, 'test_root')
@@ -196,13 +196,13 @@ def test_timestamp_error(sample_file):
         'description': 'test descriptions',
         'version': '42',
         'resource_spec': 'MultiKeySlice',
-        'metadata_mappings': {},
+        'md_mappings': [],
         'stream_mappings': {
             "do_not_cross": {
                 "time_stamp": '/does/not/exist',
                 "mapping_fields": [
-                    {'name': '/exchange/data', 'external': True},
-                    {'name': '/process/acquisition/sample_position_x', 'description': 'tile_xmovedist'}
+                    {'field': '/exchange/data', 'external': True},
+                    {'field': '/process/acquisition/sample_position_x', 'description': 'tile_xmovedist'}
                 ]
             }
         }

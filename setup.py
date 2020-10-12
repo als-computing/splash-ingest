@@ -25,7 +25,7 @@ setup(
     author="ALS Computing Group",
     author_email="dmcreynolds@lbl.gov",
     url="https://github.com/als-computing/splash-ingest",
-    download_url="https://github.com/als-computing/splash-ingest/archive/v0.1.1.tar.gzz",
+    download_url="https://pypi.org/project/splash-ingest",
     long_description=long_description,
     long_description_content_type='text/markdown',
     python_requires=">=3.7",

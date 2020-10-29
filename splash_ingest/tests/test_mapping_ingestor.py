@@ -20,28 +20,28 @@ num_frames_primary = 3
 num_frames_darks = 1
 
 mapping_dict = {
-        'name': 'test name',
-        'description': 'test descriptions',
-        'version': '42',
-        'resource_spec': 'MultiKeySlice',
-        'md_mappings': [
-            {"field": '/measurement/sample/name'},
-            {"field": '/measurement/instrument/name'},
-            {"field": '/measurement/instrument/source/beamline'},
+        "name": "test name",
+        "description": "test descriptions",
+        "version": "42",
+        "resource_spec": "MultiKeySlice",
+        "md_mappings": [
+            {"field": "/measurement/sample/name"},
+            {"field": "/measurement/instrument/name"},
+            {"field": "/measurement/instrument/source/beamline"},
         ],
-        'stream_mappings': {
+        "stream_mappings": {
             "primary": {
-                "time_stamp": '/process/acquisition/time_stamp',
+                "time_stamp": "/process/acquisition/time_stamp",
                 "mapping_fields": [
-                    {'field': '/exchange/data', 'external': True},
-                    {'field': '/process/acquisition/sample_position_x', 'description': 'tile_xmovedist'}
+                    {"field": "/exchange/data", "external": True},
+                    {"field": "/process/acquisition/sample_position_x", "description": "tile_xmovedist"}
                 ]
             },
             "darks": {
-                "time_stamp": '/process/acquisition/time_stamp',
+                "time_stamp": "/process/acquisition/time_stamp",
                 "mapping_fields": [
-                    {'field': '/exchange/dark', 'external': True},
-                    {'field': '/process/acquisition/sample_position_x', 'description': 'tile_xmovedist'}
+                    {"field": "/exchange/dark", "external": True},
+                    {"field": "/process/acquisition/sample_position_x", "description": "tile_xmovedist"}
                 ]
             }
         }
@@ -93,7 +93,7 @@ def sample_file(tmp_path):
 
 
 def test_hdf5_mapped_ingestor(sample_file):
-    ingestor = MappedHD5Ingestor(Mapping(**mapping_dict), sample_file, 'test_root')
+    ingestor = MappedHD5Ingestor(Mapping(**mapping_dict), sample_file, "test_root")
     run_cache = SingleRunCache()
     descriptors = []
     result_events = []
@@ -102,119 +102,119 @@ def test_hdf5_mapped_ingestor(sample_file):
     stop_found = False
     for name, doc in ingestor.generate_docstream():
         run_cache.callback(name, doc)
-        if name == 'start':
-            assert doc[':measurement:sample:name'] == 'my sample', 'metadata in start doc'
+        if name == "start":
+            assert doc[":measurement:sample:name"] == "my sample", "metadata in start doc"
             start_found = True
             continue
-        if name == 'descriptor':
+        if name == "descriptor":
             descriptors.append(doc)
             continue
-        if name == 'resource':
-            doc['spec'] == mapping_dict['resource_spec']
+        if name == "resource":
+            doc["spec"] == mapping_dict["resource_spec"]
             continue
-        if name == 'datum':
+        if name == "datum":
             result_datums.append(doc)
             continue
-        if name == 'resource':
+        if name == "resource":
             result_events.append(doc)
             continue
-        if name == 'event':
+        if name == "event":
             result_events.append(doc)
-        if name == 'stop':
+        if name == "stop":
             stop_found = True
-            assert doc['num_events']['primary'] == num_frames_primary
-            # assert doc['num_events']['darks'] == num_frames_darks
+            assert doc["num_events"]["primary"] == num_frames_primary
+            # assert doc["num_events"]["darks"] == num_frames_darks
             continue
 
-    assert start_found, 'a start document was produced'
-    assert stop_found, 'a stop document was produced'
+    assert start_found, "a start document was produced"
+    assert stop_found, "a stop document was produced"
 
-    assert len(descriptors) == 2, 'return two descriptors'
-    assert descriptors[0]['name'] == 'primary', 'first descriptor is primary'
-    assert descriptors[1]['name'] == 'darks', 'second descriptor is darks'
-    assert len(descriptors[0]['data_keys'].keys()) == 2, 'primary has two data_keys'
+    assert len(descriptors) == 2, "return two descriptors"
+    assert descriptors[0]["name"] == "primary", "first descriptor is primary"
+    assert descriptors[1]["name"] == "darks", "second descriptor is darks"
+    assert len(descriptors[0]["data_keys"].keys()) == 2, "primary has two data_keys"
 
     assert len(result_datums) == num_frames_primary + num_frames_darks
     assert len(result_events) == num_frames_primary + num_frames_darks
 
     run = run_cache.retrieve()
-    stream = run['primary'].to_dask()
+    stream = run["primary"].to_dask()
     assert stream
 
 
 def test_mapped_ingestor_bad_stream_field(sample_file):
     mapping_dict_bad_stream_field = {
-        'name': 'test name',
-        'description': 'test descriptions',
-        'version': '42',
-        'resource_spec': 'MultiKeySlice',
-        'md_mappings': [
-            {'field': '/measurement/sample/name'}
+        "name": "test name",
+        "description": "test descriptions",
+        "version": "42",
+        "resource_spec": "MultiKeySlice",
+        "md_mappings": [
+            {"field": "/measurement/sample/name"}
         ],
-        'stream_mappings':
+        "stream_mappings":
         {
             "primary": { 
-                "time_stamp": '/does/not/exist',
+                "time_stamp": "/does/not/exist",
                 "mapping_fields": [
                     {"field": "raise_exception"}
                 ]
             },
         }
     }
-    ingestor = MappedHD5Ingestor(Mapping(**mapping_dict_bad_stream_field), sample_file, 'test_root')
+    ingestor = MappedHD5Ingestor(Mapping(**mapping_dict_bad_stream_field), sample_file, "test_root")
     with pytest.raises(MappingNotFoundError):
         list(ingestor.generate_docstream())
 
 
 def test_mapped_ingestor_bad_metadata_field(sample_file):
     mapping_dict_bad_metadata_field = {
-        'name': 'test name',
-        'description': 'test descriptions',
-        'version': '42',
-        'resource_spec': 'MultiKeySlice',
-        'md_mappings': [
-            {"field": 'raise_exception'},
+        "name": "test name",
+        "description": "test descriptions",
+        "version": "42",
+        "resource_spec": "MultiKeySlice",
+        "md_mappings": [
+            {"field": "raise_exception"},
         ],
-        'stream_mappings': {}
+        "stream_mappings": {}
     }
-    ingestor = MappedHD5Ingestor(Mapping(**mapping_dict_bad_metadata_field), sample_file, 'test_root')
+    ingestor = MappedHD5Ingestor(Mapping(**mapping_dict_bad_metadata_field), sample_file, "test_root")
     with pytest.raises(MappingNotFoundError):
         for name, in ingestor.generate_docstream():
             pass
 
 
 def test_calc_num_events(sample_file):
-    stream_mapping = Mapping(**mapping_dict).stream_mappings['primary'].mapping_fields
+    stream_mapping = Mapping(**mapping_dict).stream_mappings["primary"].mapping_fields
     num_events = calc_num_events(stream_mapping, sample_file)
-    assert num_events == num_frames_primary, 'primary stream has same number events as primary stream frames'
-    assert calc_num_events({}, sample_file) == 0, 'no fields returns none'
+    assert num_events == num_frames_primary, "primary stream has same number events as primary stream frames"
+    assert calc_num_events({}, sample_file) == 0, "no fields returns none"
 
 
 def test_timestamp_error(sample_file):
     mapping = {
-        'name': 'test name',
-        'description': 'test descriptions',
-        'version': '42',
-        'resource_spec': 'MultiKeySlice',
-        'md_mappings': [],
-        'stream_mappings': {
+        "name": "test name",
+        "description": "test descriptions",
+        "version": "42",
+        "resource_spec": "MultiKeySlice",
+        "md_mappings": [],
+        "stream_mappings": {
             "do_not_cross": {
-                "time_stamp": '/does/not/exist',
+                "time_stamp": "/does/not/exist",
                 "mapping_fields": [
-                    {'field': '/exchange/data', 'external': True},
-                    {'field': '/process/acquisition/sample_position_x', 'description': 'tile_xmovedist'}
+                    {"field": "/exchange/data", "external": True},
+                    {"field": "/process/acquisition/sample_position_x", "description": "tile_xmovedist"}
                 ]
             }
         }
     }
-    ingestor = MappedHD5Ingestor(Mapping(**mapping), sample_file, 'test_root')
+    ingestor = MappedHD5Ingestor(Mapping(**mapping), sample_file, "test_root")
 
     with pytest.raises(EmptyTimestampsError) as ex_info:
         list(ingestor.generate_docstream())
-    assert ex_info.value.args[0] == 'do_not_cross'
-    assert ex_info.value.args[1] == '/does/not/exist'
+    assert ex_info.value.args[0] == "do_not_cross"
+    assert ex_info.value.args[1] == "/does/not/exist"
 
 
 def test_key_transformation():
-    key = "/don't/panic"
-    assert decode_key(encode_key(key)) == key, 'Encoded then decoded key is equal'
+    key = "/don't panic"
+    assert decode_key(encode_key(key)) == key, "Encoded then decoded key is equal"

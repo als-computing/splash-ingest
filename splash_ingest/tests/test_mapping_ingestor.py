@@ -77,9 +77,9 @@ def sample_file(tmp_path):
         dark_timestamps[dark_num] = (str(local.localize(timestamp, is_dst=None)))
 
     file = h5py.File(tmp_path / 'test.hdf5', 'w')
-    file.create_dataset('/measurement/sample/name', data='my sample')
-    file.create_dataset('/measurement/instrument/name', data='my station')
-    file.create_dataset('/measurement/instrument/source/beamline', data='my beam')
+    file.create_dataset('/measurement/sample/name', data=np.array([b'my sample'], dtype='|S256'))
+    file.create_dataset('/measurement/instrument/name', data=np.array([b'my station'], dtype='|S256'))
+    file.create_dataset('/measurement/instrument/source/beamline', data=np.array([b'my beam'], dtype='|S256'))
     file.create_dataset('/exchange/data', data=data)
     file.create_dataset('/exchange/dark', data=data_dark)
     file.create_dataset('/process/acquisition/sample_position_x', data=primary_sample_position_x)

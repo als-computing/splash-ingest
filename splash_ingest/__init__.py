@@ -173,7 +173,9 @@ class MappedHD5Ingestor():
                 hdf5_dataset = self._file[mapping_field.field]
             except Exception:
                 raise MappingNotFoundError('stream', mapping_field.field)
-            units = hdf5_dataset.attrs.get('units').decode()
+            units = hdf5_dataset.attrs.get('units')
+            if units is not None:
+                units = units.decoe()
             descriptor = dict(
                     dtype='number',
                     source='file',

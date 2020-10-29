@@ -159,9 +159,10 @@ class MappedHD5Ingestor():
             # we replace them with :, after removing the leading slash
             encoded_key = encode_key(mapping.field)
             try:
-                metadata[encoded_key] = self._file[mapping.field][()]
-            except Exception:
-                raise MappingNotFoundError('metadata', mapping.field)
+                data_value = self._file[mapping.field]
+                metadata[encoded_key] = data_value[()].item().decode()
+            except Exception as e:
+                raise MappingNotFoundError('metadata', mapping.field) from e
         return metadata
 
     def _extract_stream_descriptor_keys(self, stream_mapping: StreamMapping):
@@ -172,7 +173,7 @@ class MappedHD5Ingestor():
                 hdf5_dataset = self._file[mapping_field.field]
             except Exception:
                 raise MappingNotFoundError('stream', mapping_field.field)
-            units = hdf5_dataset.attrs.get('units')
+            units = hdf5_dataset.attrs.get('units').decode()
             descriptor = dict(
                     dtype='number',
                     source='file',

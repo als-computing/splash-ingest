@@ -133,3 +133,4 @@ dmypy.json
 *.code-workspace
 
 *.hdf5
+.scratch/

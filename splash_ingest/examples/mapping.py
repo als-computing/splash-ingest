@@ -3,22 +3,22 @@ mapping_dict = {
         "description": "test descriptions",
         "version": "42",
         "resource_spec": "MultiKeySlice",
-        "metadata_mappings": {
-            "/measurement/sample/name": "",
-            "/measurement/instrument/name":""
-        },
+        "md_mappings": [
+            {"field": "/measurement/sample/name"},
+            {"field": "/measurement/instrument/name"}
+        ],
         "stream_mappings": {
             "primary":{
                 "time_stamp": "/process/acquisition/image_date",
                 "mapping_fields": [
-                    {"name":"/exchange/data"}
+                    {"field": "/exchange/data", "external": True},
                 ]
 
             },
              "darks":{
                 "time_stamp": "/process/acquisition/image_date",
                 "mapping_fields": [
-                    {"name":"/exchange/dark"}
+                    {"field": "/exchange/dark", "external": True},
                 ]
 
             },

@@ -8,6 +8,4 @@ pytz
 tzlocal
 suitcase-jsonl
 pydantic
-jupyter
-jupyter_contrib_nbextensions
 area_detector_handlers

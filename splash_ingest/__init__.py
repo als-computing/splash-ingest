@@ -125,7 +125,7 @@ class MappedHD5Ingestor():
                     # as external, extract the value. Otherwise create a datum
                     dataset = self._file[field.field]
                     encoded_key = encode_key(field.field)
-                    event_timestamps[encoded_key] = time_stamp_dataset[x]
+                    event_timestamps[encoded_key] = time_stamp_dataset[x].decode()
                     if field.external:
                         if logger.isEnabledFor(logging.INFO):
                             logger.info(f'event for {field.external} inserted as datum')

@@ -61,7 +61,7 @@ def sample_file(tmp_path):
     # data = np.empty((num_frames_primary, 5, 5))
     data = np.empty((3, 5, 5))
     data_dark = np.empty((num_frames_darks, 5, 5))
-    pimary_timestamps = np.empty((num_frames_primary), dtype=object)
+    pimary_timestamps = np.empty((num_frames_primary), dtype=string_dt)
     start_time = datetime.datetime.now()
     primary_sample_position_x = []
     for frame_num in range(0, num_frames_primary):
@@ -70,7 +70,7 @@ def sample_file(tmp_path):
         pimary_timestamps[frame_num] = (str(local.localize(timestamp, is_dst=None)))
         primary_sample_position_x.append(float(frame_num))
     start_time = datetime.datetime.now()
-    dark_timestamps = np.empty((num_frames_primary), dtype=object)
+    dark_timestamps = np.empty((num_frames_primary), dtype=string_dt)
     for dark_num in range(0, num_frames_darks):
         data_dark[dark_num, :, :] = np.random.random_sample((5, 5))
         timestamp = start_time + datetime.timedelta(0, 1)  # add a second to each

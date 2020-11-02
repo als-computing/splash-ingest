@@ -61,16 +61,17 @@ def sample_file(tmp_path):
     # data = np.empty((num_frames_primary, 5, 5))
     data = np.empty((3, 5, 5))
     data_dark = np.empty((num_frames_darks, 5, 5))
-    pimary_timestamps = np.empty((num_frames_primary), dtype=string_dt)
+    primary_timestamps = np.empty((num_frames_primary), dtype=string_dt)
+    dark_timestamps = np.empty((num_frames_darks), dtype=string_dt)
     start_time = datetime.datetime.now()
     primary_sample_position_x = []
     for frame_num in range(0, num_frames_primary):
         data[frame_num] = np.random.random_sample((5, 5))
         timestamp = start_time + datetime.timedelta(0, 1)  # add a second to each
-        pimary_timestamps[frame_num] = (str(local.localize(timestamp, is_dst=None)))
+        primary_timestamps[frame_num] = (str(local.localize(timestamp, is_dst=None)))
         primary_sample_position_x.append(float(frame_num))
     start_time = datetime.datetime.now()
-    dark_timestamps = np.empty((num_frames_primary), dtype=string_dt)
+    
     for dark_num in range(0, num_frames_darks):
         data_dark[dark_num, :, :] = np.random.random_sample((5, 5))
         timestamp = start_time + datetime.timedelta(0, 1)  # add a second to each
@@ -83,7 +84,7 @@ def sample_file(tmp_path):
     file.create_dataset('/exchange/data', data=data)
     file.create_dataset('/exchange/dark', data=data_dark)
     file.create_dataset('/process/acquisition/sample_position_x', data=primary_sample_position_x)
-    file.create_dataset('/process/acquisition/time_stamp', data=pimary_timestamps, dtype=string_dt)
+    file.create_dataset('/process/acquisition/time_stamp', data=primary_timestamps, dtype=string_dt)
     file.create_dataset('/process/acquisition/dark_time_stamp', data=dark_timestamps, dtype=string_dt)
     file.close()
     file = h5py.File(tmp_path / 'test.hdf5', 'r')

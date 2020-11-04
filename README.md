@@ -1,5 +1,5 @@
 # splash-ingest  
-![](https://travis-ci.org/dylanmcreynolds/splash-ingest.svg?branch=master)
+![Python application](https://github.com/als-computing/splash-ingest/workflows/Python%20application/badge.svg)
 
 Splash ingest contains tools for ingesting file system resources into bluesky [document stream](https://blueskyproject.io/event-model/) documents. 
 

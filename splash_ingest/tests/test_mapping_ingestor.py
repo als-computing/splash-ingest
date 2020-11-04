@@ -59,7 +59,7 @@ def sample_file(tmp_path):
     string_dt = h5py.string_dtype(encoding='ascii')
     local = pytz.timezone("America/Los_Angeles")
     # data = np.empty((num_frames_primary, 5, 5))
-    data = np.empty((3, 5, 5))
+    data = np.empty((num_frames_primary, 5, 5))
     data_dark = np.empty((num_frames_darks, 5, 5))
     primary_timestamps = np.empty((num_frames_primary), dtype=string_dt)
     dark_timestamps = np.empty((num_frames_darks), dtype=string_dt)

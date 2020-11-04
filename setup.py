@@ -15,6 +15,11 @@ with open(path.join(here, 'requirements.txt')) as requirements_file:
     requirements = [line for line in requirements_file.read().splitlines()
                     if not line.startswith('#')]
 
+with open(path.join(here, 'requirements-webservice.txt')) as requirements_file:
+    # Parse requirements.txt, ignoring any commented-out lines.
+    requirements_webservice = [line for line in requirements_file.read().splitlines()
+                    if not line.startswith('#')]
+
 
 setup(
     name='splash_ingest',
@@ -30,6 +35,9 @@ setup(
     long_description_content_type='text/markdown',
     python_requires=">=3.7",
     packages=find_packages(exclude=["docs", "tests"]),
+    extras_require={
+        "webservice": requirements_webservice
+    },
     entry_points={
         "databroker.handlers": [
             "MultiKeySlice = splash_ingest.handlers:MultiKeyHDF5DatasetSliceHandler"

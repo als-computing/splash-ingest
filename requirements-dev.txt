@@ -2,3 +2,4 @@ pytest
 jupyter
 jupyter_contrib_nbextensions
 databroker
+mongomock

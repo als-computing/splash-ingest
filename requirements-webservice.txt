@@ -1,0 +1,11 @@
+pymongo
+fastapi
+uvicorn
+requests
+python-dotenv
+python-jose[cryptography]
+python-multipart
+event-model
+fastapi
+splash-ingest
+suitcase-mongo

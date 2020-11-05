@@ -157,7 +157,21 @@ def poll_for_new_jobs():
             logger.exception('polling thread exception', e)
 
 
-def ingest(submitter: str, job: Job):
+def ingest(submitter: str, job: Job) -> str:
+    """Updates job status and calls ingest method specified in job
+
+    Parameters
+    ----------
+    submitter : str
+        user identification of submitter
+    job : Job
+        job tracking this ingestion
+
+    Returns
+    -------
+    str
+        uid of the newly created start document
+    """
     try:
         if logger.isEnabledFor(logging.INFO):
             logger.info(f"started job {repr(job)}")
@@ -169,7 +183,7 @@ def ingest(submitter: str, job: Job):
         if persisted_job.status != JobStatus.submitted:
             logger.info(f"Job {job.id} on document {job.document_path} already started, exiting.")
             return
-        
+   
         set_job_status(job.id,
                        StatusItem(
                         time=datetime.utcnow(),
@@ -183,7 +197,7 @@ def ingest(submitter: str, job: Job):
             logger.info(log)
             set_job_status(job.id, StatusItem(time=datetime.utcnow(), status=JobStatus.error, submitter=submitter, log=log))
             return
-        
+
         if logger.isEnabledFor(logging.INFO):
             logger.info(f"mapping found for {job}")    
         mapping = mapping_with_revision[0]

@@ -1,5 +1,4 @@
 pytest
-jupyter
-jupyter_contrib_nbextensions
+flake8
 databroker
 mongomock

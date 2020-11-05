@@ -1,8 +1,6 @@
 zmq
 h5py
 numpy
-pytest
-flake8
 event_model
 pytz
 tzlocal

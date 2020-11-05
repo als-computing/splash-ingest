@@ -1,0 +1,1 @@
+docker run -p 80:80 -e APP_MODULE="splash_ingest_manager.api:app" --network host splash_ingest_service

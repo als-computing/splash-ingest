@@ -29,19 +29,20 @@ api_key_cookie = APIKeyCookie(name=API_KEY_NAME, auto_error=False)
 
 logger = logging.getLogger(__name__)
 app = FastAPI(    
-    openapi_url="/api/v1/openapi.json",
-    docs_url="/api/docs",
-    redoc_url="/api/redoc",)
+    openapi_url="/api/ingest/openapi.json",
+    docs_url="/api/ingest/docs",
+    redoc_url="/api/ingest/redoc",)
 config = Config(".env")
 MONGO_DB_URI = config("MONGO_DB_URI", cast=str, default="mongodb://localhost:27017/splash")
-
+SPLASH_DB_NAME = config("SPLASH_DB_NAME", cast=str, default="splash")
 
 @app.on_event("startup")
 async def startup_event():
-    db = MongoClient(MONGO_DB_URI).splash
+    db = MongoClient(MONGO_DB_URI)[SPLASH_DB_NAME]
     init_ingest_service(db)
     init_api_service(db)
-    start_job_poller()
+    # start_job_poller()
+
 
 
 async def get_api_key_from_request(
@@ -76,7 +77,7 @@ class CreateJobResponse(BaseModel):
     job_id: Optional[str] = Field(description="uid of newly created job, if created")
 
 
-@app.post("/api/v1/ingest_jobs")
+@app.post("/api/ingest/jobs")
 async def submit_job(request: CreateJobRequest, api_key: APIKey = Depends(get_api_key_from_request)):
 
     client_key = get_stored_api_key('user1', api_key)
@@ -91,7 +92,7 @@ async def submit_job(request: CreateJobRequest, api_key: APIKey = Depends(get_ap
     return CreateJobResponse(message="success", job_id=job.id)
   
 
-@app.get("/api/v1/ingest_jobs/{job_id}")
+@app.get("/api/ingest/jobs/{job_id}")
 async def get_job(job_id: str, api_key: APIKey = Depends(get_api_key_from_request)) -> Job:
     try:
         client_key = get_stored_api_key('user1', api_key)
@@ -104,7 +105,7 @@ async def get_job(job_id: str, api_key: APIKey = Depends(get_api_key_from_reques
         raise e
 
 
-@app.get("/api/v1/ingest_jobs")
+@app.get("/api/ingest/jobs")
 async def get_unstarted_jobs(api_key: APIKey = Depends(get_api_key_from_request)) -> Job:
     try:
         client_key = get_stored_api_key('user1', api_key)

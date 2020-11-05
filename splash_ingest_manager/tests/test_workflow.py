@@ -90,33 +90,11 @@ def test_query_unstarted_jobs():
     jobs = list(find_unstarted_jobs())
     assert len(jobs) == 0, "all jobs should be set to started"
 
-    
-
 
 @pytest.fixture
 def sample_file(tmp_path):
-    num_frames_primary = 2
-    string_dt = h5py.string_dtype(encoding='ascii')
-    local = pytz.timezone("America/Los_Angeles")
-    # data = np.empty((num_frames_primary, 5, 5))
-    data = np.empty((num_frames_primary, 5, 5))
-    pimary_timestamps = np.empty((num_frames_primary), dtype='S256')
-    start_time = datetime.datetime.now()
-    primary_sample_position_x = []
-    for frame_num in range(0, num_frames_primary):
-        data[frame_num] = np.random.random_sample((5, 5))
-        timestamp = start_time + datetime.timedelta(0, 1)  # add a second to each
-        pimary_timestamps[frame_num] = str(local.localize(timestamp, is_dst=None))
-        primary_sample_position_x.append(float(frame_num))
-    start_time = datetime.datetime.now()
-
     file = h5py.File(tmp_path / 'test.hdf5', 'w')
     file.create_dataset('/measurement/sample/name', data=np.array([b'my sample'], dtype='|S256'))
-    file.create_dataset('/measurement/instrument/name', data=np.array([b'my station'], dtype='|S256'))
-    file.create_dataset('/measurement/instrument/source/beamline', data=np.array([b'my beam'], dtype='|S256'))
-    file.create_dataset('/exchange/data', data=data)
-    file.create_dataset('/process/acquisition/sample_position_x', data=primary_sample_position_x)
-    file.create_dataset('/process/acquisition/time_stamp', data=np.array(pimary_timestamps), dtype=string_dt)
     file.close()
     file = h5py.File(tmp_path / 'test.hdf5', 'r')
     yield file
@@ -133,10 +111,10 @@ def test_ingest(sample_file, init_mongomock):
     start_uid = ingest("slartibartfast", job)
     job = find_job(job.id)
     assert job is not None
-    assert job.status == JobStatus.successful
+    assert job.status == JobStatus.successful, 'injest completed'
 
     assert bluesky_context.db['run_start'].find_one({"uid": start_uid}) is not None, "job wrote start doc"
-    
+
 
 mapping_dict = {
         "name": "magrathia",
@@ -146,13 +124,4 @@ mapping_dict = {
         "md_mappings": [
             {"field": "/measurement/sample/name"}
         ],
-        "stream_mappings": {
-            "primary": {
-                "time_stamp": "/process/acquisition/time_stamp",
-                "mapping_fields": [
-                    {"field": "/exchange/data", "external": True},
-                    {"field": "/process/acquisition/sample_position_x", "description": "tile_xmovedist"}
-                ]
-            }
-        }
     }

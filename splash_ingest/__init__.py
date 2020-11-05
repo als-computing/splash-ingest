@@ -87,67 +87,66 @@ class MappedHD5Ingestor():
             spec=self._mapping.resource_spec,
             root=self._reference_root_name,
             resource_path=self._file.filename,  # need to calculate a relative path
-            resource_kwargs={
-                "key": "/exchange/data"
-            })
+            resource_kwargs={})
         yield 'resource', hd5_resource.resource_doc
 
         # produce documents for each stream
         stream_mappings: StreamMapping = self._mapping.stream_mappings
-        for stream_name in stream_mappings.keys():
-            stream_timestamp_field = stream_mappings[stream_name].time_stamp
-            mapping = stream_mappings[stream_name].mapping_fields
+        if stream_mappings is not None:
+            for stream_name in stream_mappings.keys():
+                stream_timestamp_field = stream_mappings[stream_name].time_stamp
+                mapping = stream_mappings[stream_name].mapping_fields
 
-            descriptor_keys = self._extract_stream_descriptor_keys(mapping)
-            stream_bundle = run_bundle.compose_descriptor(
-                data_keys=descriptor_keys,
-                name=stream_name)
-            yield 'descriptor', stream_bundle.descriptor_doc
+                descriptor_keys = self._extract_stream_descriptor_keys(mapping)
+                stream_bundle = run_bundle.compose_descriptor(
+                    data_keys=descriptor_keys,
+                    name=stream_name)
+                yield 'descriptor', stream_bundle.descriptor_doc
 
-            num_events = calc_num_events(stream_mappings[stream_name].mapping_fields, self._file)
-            if num_events == 0:  # test this
-                continue
-            
-            # produce documents for each event (event and datum)
-            for x in range(0, num_events):
-                try:
-                    time_stamp_dataset = self._file[stream_timestamp_field][()]
-                except Exception as e:
-                    raise EmptyTimestampsError(stream_name, stream_timestamp_field) from e
-                if time_stamp_dataset is None or len(time_stamp_dataset) == 0:
-                    raise EmptyTimestampsError(stream_name, stream_timestamp_field)
-                event_data = {}
-                event_timestamps = {}
-                filled_fields = {}
-                # create datums and events
-                for field in stream_mappings[stream_name].mapping_fields:
-                    # Go through each field in the stream. If field not marked
-                    # as external, extract the value. Otherwise create a datum
-                    dataset = self._file[field.field]
-                    encoded_key = encode_key(field.field)
-                    event_timestamps[encoded_key] = time_stamp_dataset[x].decode()
-                    if field.external:
-                        if logger.isEnabledFor(logging.INFO):
-                            logger.info(f'event for {field.external} inserted as datum')
-                        # field's data provided in datum
-                        datum = hd5_resource.compose_datum(datum_kwargs={
-                                "key": encoded_key,
-                                "point_number": x})  # need kwargs for HDF5 datum
-                        yield 'datum', datum
-                        event_data[encoded_key] = datum['datum_id']
-                        filled_fields[encoded_key] = False
-                    else:
-                        # field's data provided in event
-                        if logger.isEnabledFor(logging.INFO):
-                            logger.info(f'event for {field.external} inserted in event')
-                        event_data[encoded_key] = dataset[x]
+                num_events = calc_num_events(stream_mappings[stream_name].mapping_fields, self._file)
+                if num_events == 0:  # test this
+                    continue
+                
+                # produce documents for each event (event and datum)
+                for x in range(0, num_events):
+                    try:
+                        time_stamp_dataset = self._file[stream_timestamp_field][()]
+                    except Exception as e:
+                        raise EmptyTimestampsError(stream_name, stream_timestamp_field) from e
+                    if time_stamp_dataset is None or len(time_stamp_dataset) == 0:
+                        raise EmptyTimestampsError(stream_name, stream_timestamp_field)
+                    event_data = {}
+                    event_timestamps = {}
+                    filled_fields = {}
+                    # create datums and events
+                    for field in stream_mappings[stream_name].mapping_fields:
+                        # Go through each field in the stream. If field not marked
+                        # as external, extract the value. Otherwise create a datum
+                        dataset = self._file[field.field]
+                        encoded_key = encode_key(field.field)
+                        event_timestamps[encoded_key] = time_stamp_dataset[x]
+                        if field.external:
+                            if logger.isEnabledFor(logging.INFO):
+                                logger.info(f'event for {field.external} inserted as datum')
+                            # field's data provided in datum
+                            datum = hd5_resource.compose_datum(datum_kwargs={
+                                    "key": encoded_key,
+                                    "point_number": x})  # need kwargs for HDF5 datum
+                            yield 'datum', datum
+                            event_data[encoded_key] = datum['datum_id']
+                            filled_fields[encoded_key] = False
+                        else:
+                            # field's data provided in event
+                            if logger.isEnabledFor(logging.INFO):
+                                logger.info(f'event for {field.external} inserted in event')
+                            event_data[encoded_key] = dataset[x]
 
-                yield 'event', stream_bundle.compose_event(
-                    data=event_data,
-                    filled=filled_fields,
-                    seq_num=x,
-                    timestamps=event_timestamps
-                )
+                    yield 'event', stream_bundle.compose_event(
+                        data=event_data,
+                        filled=filled_fields,
+                        seq_num=x,
+                        timestamps=event_timestamps
+                    )
 
         stop_doc = run_bundle.compose_stop()
         yield 'stop', stop_doc

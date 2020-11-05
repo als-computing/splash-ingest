@@ -26,7 +26,7 @@ def sample_file(tmp_path):
 
 
 def test_multi_key_handler(sample_file):
-    handler = MultiKeyHDF5DatasetSliceHandler(sample_file.filename, '/exchange/data', frame_per_point=1)
+    handler = MultiKeyHDF5DatasetSliceHandler(sample_file.filename, frame_per_point=1)
     data = handler(0, '/exchange/data')
     assert data.shape == (5, 5)
     data = handler(0, '/exchange/dark')

@@ -1,4 +1,3 @@
-
 from dataclasses import dataclass
 from datetime import datetime
 import logging
@@ -12,16 +11,16 @@ from pymongo import MongoClient
 from pymongo.collection import Collection
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('splash_ingest')
 
 
 @dataclass
-class ServiceMongoCollections():
+class ServiceContext():
     db: MongoClient = None
     api_client_collection: Collection = None
 
 
-context = ServiceMongoCollections()
+context = ServiceContext()
 
 
 def init_api_service(db: MongoClient):
@@ -49,18 +48,19 @@ def create_api_key(submitter: str, client: str, api: str) -> str:
         context.api_client_collection.insert_one(client_key.dict())
         return key
     except Exception as e:
-        logger.error(e)
+        logging.error(e)
         raise e
 
 
 def get_stored_api_key(submitter: str, key: str) -> APIClientKey:
     try:
+        logger.info('!!!!!!!!!get_stored_api_key')
         key_dict = context.api_client_collection.find_one({"key": key})
         if key_dict is None:
             return None
         return APIClientKey(**key_dict)
     except Exception as e:
-        logger.error(e)
+        logging.error(e)
         raise e
 
 
@@ -69,5 +69,5 @@ def get_api_keys(submitter: str) -> List[APIClientKey]:
         keys = list(context.api_client_collection.find())
         return parse_obj_as(List[APIClientKey], keys)
     except Exception as e:
-        logger.error(e)
+        logging.error(e)
         raise e

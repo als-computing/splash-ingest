@@ -20,7 +20,7 @@ from splash_ingest.model import Mapping
 from splash_ingest import MappedHD5Ingestor
 from .model import Job, JobStatus, StatusItem, RevisionStamp
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('splash-ingest')
 # these context objects help us inject dependencies, useful
 # in unit testing
 
@@ -148,7 +148,7 @@ def poll_for_new_jobs():
         try:
             job_list = find_unstarted_jobs()
             if len(job_list) == 0:
-                time.sleep(1)
+                time.sleep(5)
             else:
                 ingest('system', job_list[-1])
                 # with ProcessPoolExecutor(max_workers=3) as executor:
@@ -199,7 +199,7 @@ def ingest(submitter: str, job: Job) -> str:
             return
 
         if logger.isEnabledFor(logging.INFO):
-            logger.info(f"mapping found for {job}")    
+            logger.info(f"mapping found for {job}")  
         mapping = mapping_with_revision[0]
         file = h5py.File(job.document_path, "r")
         ingestor = MappedHD5Ingestor(mapping, file, 'mapping_ingestor', None)

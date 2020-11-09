@@ -5,7 +5,7 @@ import pytest
 import pytz
 from mongomock import MongoClient
 import numpy as np
-from splash_ingest_manager.auth_service import create_api_key, init_api_service as init_api_key
+from splash_ingest_manager.api_auth_service import create_api_client, init_api_service as init_api_key
 from splash_ingest.model import Mapping
 from ..ingest_service import (
     bluesky_context,
@@ -27,7 +27,7 @@ def init_mongomock():
     db = MongoClient().ingest_db
     init_ingest_service(db)
     init_api_key(db)
-    create_api_key('user1', 'sirius_cybernetics_gpp', 'door_operation')
+    create_api_client('user1', 'sirius_cybernetics_gpp', 'door_operation')
 
 
 

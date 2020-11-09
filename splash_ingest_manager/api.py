@@ -8,7 +8,7 @@ from pymongo import MongoClient
 from starlette.config import Config
 from starlette.status import HTTP_403_FORBIDDEN
 
-from .auth_service import get_stored_api_key, init_api_service
+from .api_auth_service import init_api_service, verify_api_key
 from .ingest_service import (
     init_ingest_service,
     start_job_poller,
@@ -22,21 +22,23 @@ from .ingest_service import (
 from splash_ingest.model import Mapping
 from splash_ingest_manager.model import Job
 
-API_KEY_NAME = "access_token"
+API_KEY_NAME = "api_key"
 
 
 api_key_query = APIKeyQuery(name=API_KEY_NAME, auto_error=False)
 api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
 api_key_cookie = APIKeyCookie(name=API_KEY_NAME, auto_error=False)
 
-root_logger = logging.getLogger()
-root_logger.setLevel(logging.INFO)
+# root_logger = logging.getLogger()
+# root_logger.setLevel(logging.INFO)
 ch = logging.StreamHandler()
 # ch.setLevel(logging.INFO)
-root_logger.addHandler(ch)
+# root_logger.addHandler(ch)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 ch.setFormatter(formatter)
 logger = logging.getLogger('splash_ingest')
+logger.addHandler(ch)
+
 app = FastAPI(    
     openapi_url="/api/ingest/openapi.json",
     docs_url="/api/ingest/docs",
@@ -44,11 +46,13 @@ app = FastAPI(
 config = Config(".env")
 MONGO_DB_URI = config("MONGO_DB_URI", cast=str, default="mongodb://localhost:27017/splash")
 SPLASH_DB_NAME = config("SPLASH_DB_NAME", cast=str, default="splash")
+SPLASH_LOG_LEVEL = config("SPLASH_LOG_LEVEL", cast=str, default="INFO")
+logger.setLevel(SPLASH_LOG_LEVEL)
 
 
 @app.on_event("startup")
 async def startup_event():
-    logger.info('!!!!!!!!!starting server')
+    logger.debug('!!!!!!!!!starting server')
     db = MongoClient(MONGO_DB_URI)[SPLASH_DB_NAME]
     init_ingest_service(db)
     init_api_service(db)
@@ -87,13 +91,13 @@ class CreateJobResponse(BaseModel):
 
 
 @app.post("/api/ingest/jobs", tags=['ingest_jobs'])
-async def submit_job(request: CreateJobRequest, api_key: APIKey = Depends(get_api_key_from_request)) -> CreateJobResponse:
-
-    client_key = get_stored_api_key('user1', api_key)
-    logger.info(f'request client key {repr(client_key)}')
-    if client_key is None or client_key.api != INGEST_JOBS_API:
-        logger.info('forbidden')
+async def submit_job(request: CreateJobRequest, api_key: APIKey = Depends(get_api_key_from_request)) \
+         -> CreateJobResponse:
+    client_key: APIKey = verify_api_key(api_key)
+    if not client_key:
+        logger.info('forbidden  {api_key}')
         raise HTTPException(status_code=403)
+
     job = create_job(
         client_key.client,
         request.file_path,
@@ -104,9 +108,10 @@ async def submit_job(request: CreateJobRequest, api_key: APIKey = Depends(get_ap
 @app.get("/api/ingest/jobs/{job_id}", tags=['ingest_jobs'])
 async def get_job(job_id: str, api_key: APIKey = Depends(get_api_key_from_request)) -> Job:
     try:
-        client_key = get_stored_api_key('user1', api_key)
-        if client_key is None or client_key.api != INGEST_JOBS_API:
-            return HTTP_403_FORBIDDEN
+        client_key: APIKey = verify_api_key(api_key)
+        if not client_key:
+            logger.info('forbidden  {api_key}')
+            raise HTTPException(status_code=403)
         job = find_job(job_id)
         return job
     except Exception as e:
@@ -117,9 +122,10 @@ async def get_job(job_id: str, api_key: APIKey = Depends(get_api_key_from_reques
 @app.get("/api/ingest/jobs", tags=['ingest_jobs'])
 async def get_unstarted_jobs(api_key: APIKey = Depends(get_api_key_from_request)) -> Job:
     try:
-        client_key = get_stored_api_key('user1', api_key)
-        if client_key is None or client_key.api != INGEST_JOBS_API:
-            return HTTP_403_FORBIDDEN
+        client_key: APIKey = verify_api_key(api_key)
+        if not client_key:
+            logger.info('forbidden  {api_key}')
+            raise HTTPException(status_code=403)
         jobs = find_unstarted_jobs()
         return jobs
     except Exception as e:
@@ -133,11 +139,13 @@ class CreateMappingResponse(BaseModel):
 
 
 @app.post("/api/ingest/mappings", tags=['mappings'])
-async def insert_mapping(mapping: Mapping, api_key: APIKey = Depends(get_api_key_from_request)) -> CreateMappingResponse:
+async def insert_mapping(mapping: Mapping, 
+                         api_key: APIKey = Depends(get_api_key_from_request)) -> CreateMappingResponse:
     try:
-        client_key = get_stored_api_key('user1', api_key)
-        if client_key is None or client_key.api != INGEST_JOBS_API:
-            return HTTP_403_FORBIDDEN
+        client_key: APIKey = verify_api_key(api_key)
+        if not client_key:
+            logger.info('forbidden  {api_key}')
+            raise HTTPException(status_code=403)
         mapping_id = create_mapping(client_key.client, mapping)
         return CreateMappingResponse(mapping_id=mapping_id, message="success")
     except Exception as e:
@@ -148,11 +156,13 @@ async def insert_mapping(mapping: Mapping, api_key: APIKey = Depends(get_api_key
 @app.get("/api/ingest/mappings/{mapping_id}", tags=['mappings'])
 async def get_mapping(mapping_id: str, api_key: APIKey = Depends(get_api_key_from_request)) -> Mapping:
     try:
-        client_key = get_stored_api_key('user1', api_key)
-        if client_key is None or client_key.api != INGEST_JOBS_API:
-            return HTTP_403_FORBIDDEN
+        client_key: APIKey = verify_api_key(api_key)
+        if not client_key:
+            logger.info('forbidden  {api_key}')
+            raise HTTPException(status_code=403)
         mapping = find_mapping(client_key.client, mapping_id)
         return mapping
     except Exception as e:
         logger.error(e)
         raise e
+ 

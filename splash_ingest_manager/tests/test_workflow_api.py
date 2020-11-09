@@ -6,7 +6,7 @@ import pytest
 
 from splash_ingest.model import Mapping
 from splash_ingest_manager.api import app, CreateJobRequest, CreateJobResponse, CreateMappingResponse
-from ..auth_service import create_api_key, init_api_service
+from ..api_auth_service import create_api_client, init_api_service
 from ..ingest_service import init_ingest_service
 from ..model import Job
 from ..api import INGEST_JOBS_API, API_KEY_NAME
@@ -22,7 +22,7 @@ def client():
 
 
 def test_create_job_api(client: TestClient):
-    key = create_api_key('user1', 'sirius_cybernetics_gpp', INGEST_JOBS_API)
+    key = create_api_client('user1', 'sirius_cybernetics_gpp', INGEST_JOBS_API)
     request = CreateJobRequest(file_path="/foo/bar.hdf5", mapping_name="beamline_mappings", mapping_version="42")
     response: CreateJobResponse = client.post(url="/api/ingest/jobs", data=request.json(), headers={API_KEY_NAME: key})
     assert response.status_code == 200
@@ -37,7 +37,7 @@ def test_create_job_api(client: TestClient):
 
 
 def test_mapping_api(client: TestClient):
-    key = create_api_key('user1', 'sirius_cybernetics_gpp', INGEST_JOBS_API)
+    key = create_api_client('user1', 'sirius_cybernetics_gpp', INGEST_JOBS_API)
     request = Mapping(name="foo", description="bar", resource_spec="blah")
     response: CreateMappingResponse = client.post(url="/api/ingest/mappings",
                                                   data=request.json(),

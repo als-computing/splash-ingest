@@ -1,1 +1,1 @@
-docker run -p 80:80 -e APP_MODULE="splash_ingest_manager.api:app" --network host splash_ingest_service
+docker run -p 80:80 -e SPLASH_LOG_LEVEL="DEBUG" -e MAX_WORKERS="2" -e APP_MODULE="splash_ingest_manager.api:app" --network host splash_ingest_service

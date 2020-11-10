@@ -1,5 +1,4 @@
 pymongo
-fastapi
 uvicorn
 requests
 python-dotenv
@@ -9,3 +8,4 @@ event-model
 fastapi
 splash-ingest
 suitcase-mongo
+passlib

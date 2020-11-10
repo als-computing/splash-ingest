@@ -7,4 +7,3 @@ tzlocal
 suitcase-jsonl
 pydantic
 area_detector_handlers
-passlib

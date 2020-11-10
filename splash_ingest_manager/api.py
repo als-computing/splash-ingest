@@ -11,7 +11,6 @@ from starlette.status import HTTP_403_FORBIDDEN
 from .api_auth_service import init_api_service, verify_api_key
 from .ingest_service import (
     init_ingest_service,
-    start_job_poller,
     create_job,
     find_job,
     find_unstarted_jobs,
@@ -29,25 +28,29 @@ api_key_query = APIKeyQuery(name=API_KEY_NAME, auto_error=False)
 api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
 api_key_cookie = APIKeyCookie(name=API_KEY_NAME, auto_error=False)
 
-# root_logger = logging.getLogger()
-# root_logger.setLevel(logging.INFO)
-ch = logging.StreamHandler()
-# ch.setLevel(logging.INFO)
-# root_logger.addHandler(ch)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-ch.setFormatter(formatter)
+config = Config(".env")
+MONGO_DB_URI = config("MONGO_DB_URI", cast=str, default="mongodb://localhost:27017/splash")
+SPLASH_DB_NAME = config("SPLASH_DB_NAME", cast=str, default="splash")
+SPLASH_LOG_LEVEL = config("SPLASH_LOG_LEVEL", cast=str, default="INFO")
+
 logger = logging.getLogger('splash_ingest')
-logger.addHandler(ch)
+def init_logging():
+
+    ch = logging.StreamHandler()
+    # ch.setLevel(logging.INFO)
+    # root_logger.addHandler(ch)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
+    logger.setLevel(SPLASH_LOG_LEVEL)
+
+
+init_logging()
 
 app = FastAPI(    
     openapi_url="/api/ingest/openapi.json",
     docs_url="/api/ingest/docs",
     redoc_url="/api/ingest/redoc",)
-config = Config(".env")
-MONGO_DB_URI = config("MONGO_DB_URI", cast=str, default="mongodb://localhost:27017/splash")
-SPLASH_DB_NAME = config("SPLASH_DB_NAME", cast=str, default="splash")
-SPLASH_LOG_LEVEL = config("SPLASH_LOG_LEVEL", cast=str, default="INFO")
-logger.setLevel(SPLASH_LOG_LEVEL)
 
 
 @app.on_event("startup")
@@ -56,7 +59,7 @@ async def startup_event():
     db = MongoClient(MONGO_DB_URI)[SPLASH_DB_NAME]
     init_ingest_service(db)
     init_api_service(db)
-    start_job_poller()
+    # start_job_poller()
 
 
 async def get_api_key_from_request(

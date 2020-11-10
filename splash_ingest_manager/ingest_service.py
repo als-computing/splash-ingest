@@ -1,15 +1,13 @@
 from dataclasses import dataclass
 from datetime import datetime
-import h5py
 import logging
 import sys
-from threading import Thread
 import time
 from typing import List
 import traceback
 from uuid import uuid4
 
-
+import h5py
 from pydantic import parse_obj_as
 from pymongo import MongoClient
 from pymongo.collection import Collection
@@ -20,9 +18,10 @@ from splash_ingest.model import Mapping
 from splash_ingest import MappedHD5Ingestor
 from .model import Job, JobStatus, StatusItem, RevisionStamp
 
-logger = logging.getLogger('splash-ingest')
+logger = logging.getLogger('splash_ingest.ingest_service')
 # these context objects help us inject dependencies, useful
 # in unit testing
+
 
 @dataclass
 class ServiceMongoCollectionsContext():
@@ -81,10 +80,7 @@ def init_ingest_service(db: MongoClient):
     )
 
 
-def start_job_poller():
-    find_jobs_thread = Thread(target=poll_for_new_jobs, daemon=True)
-    find_jobs_thread.start()
-    logger.info('polling thread started, service initialization complete')
+
 
 
 def create_job(submitter, document_path: str, mapping_id: str):
@@ -143,16 +139,19 @@ def create_mapping(submitter, mapping: Mapping):
     return id
 
 
-def poll_for_new_jobs():
+def poll_for_new_jobs(sleep_interval=5):
+    logger.info(f"Beginning polling, waiting {sleep_interval} each time")
     while True:
         try:
             job_list = find_unstarted_jobs()
+            num_pending = len(job_list)
+            logger.info(f"jobs pending: {num_pending}")
             if len(job_list) == 0:
-                time.sleep(5)
+                time.sleep(sleep_interval)
             else:
+                job: Job = job_list[-1]
+                logger.info(f"ingesting path: {job.document_path} mapping: {job.mapping_id}")
                 ingest('system', job_list[-1])
-                # with ProcessPoolExecutor(max_workers=3) as executor:
-                #     executor.submit(ingest, "mongodb://127.0.0.1/splash", 'system', job_list[-1])
         except Exception as e:
             logger.exception('polling thread exception', e)
 

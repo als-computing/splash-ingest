@@ -17,6 +17,12 @@ class MappingNotFoundError(Exception):
         super().__init__(f"Cannot find mapping file: {location} - {missing_field}")
 
 
+class FieldNotInResourceError(Exception):
+    def __ini__(self, stream, field):
+        self.stream = stream
+        self.field = field
+        super().__init__(f"Cannot find mapping timestamps for stream {stream} using timestamp mapping: {field}")
+
 class EmptyTimestampsError(Exception):
     def __ini__(self, stream, field):
         self.stream = stream
@@ -34,7 +40,7 @@ class MappedHD5Ingestor():
 
 
     """
-    def __init__(self, mapping: Mapping, file, reference_root_name, projections=None, session_auth=[]):
+    def __init__(self, mapping: Mapping, file, reference_root_name, session_auth=[]):
         """
 
         Parameters
@@ -54,7 +60,6 @@ class MappedHD5Ingestor():
         self._mapping = mapping
         self._file = file
         self._reference_root_name = reference_root_name
-        self._projections = projections
         self._session_auth = session_auth
         self._issues = []
 
@@ -86,7 +91,7 @@ class MappedHD5Ingestor():
         metadata = self._extract_metadata()
         run_bundle = event_model.compose_run(metadata=metadata)
         start_doc = run_bundle.start_doc
-        start_doc['projections'] = self._projections
+        start_doc['projections'] = self._mapping.projections
         start_doc['session_auth'] = self._session_auth
         yield 'start', start_doc
 
@@ -109,8 +114,11 @@ class MappedHD5Ingestor():
                     data_keys=descriptor_keys,
                     name=stream_name)
                 yield 'descriptor', stream_bundle.descriptor_doc
-
-                num_events = calc_num_events(stream_mappings[stream_name].mapping_fields, self._file)
+                num_events = 0
+                try:
+                    num_events = calc_num_events(stream_mappings[stream_name].mapping_fields, self._file)
+                except FieldNotInResourceError as e:
+                    self.issues.append(e)
                 if num_events == 0:  # test this
                     continue
                 
@@ -135,8 +143,8 @@ class MappedHD5Ingestor():
                         encoded_key = encode_key(field.field)
                         event_timestamps[encoded_key] = time_stamp_dataset[x]
                         if field.external:
-                            if logger.isEnabledFor(logging.INFO):
-                                logger.info(f'event for {field.external} inserted as datum')
+                            if logger.isEnabledFor(logging.DEBUG):
+                                logger.debug(f'event for {field.external} inserted as datum')
                             # field's data provided in datum
                             datum = hd5_resource.compose_datum(datum_kwargs={
                                     "key": encoded_key,
@@ -215,7 +223,10 @@ def calc_num_events(mapping_fields: List[StreamMappingField], file):
     if len(mapping_fields) == 0:
         return 0
     name = mapping_fields[0].field
-    return file[name].shape[0]
+    try:
+        return file[name].shape[0]
+    except KeyError as e:
+        raise FieldNotInResourceError("timestamp check", name)
 
 from ._version import get_versions
 __version__ = get_versions()['version']

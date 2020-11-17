@@ -80,11 +80,8 @@ def init_ingest_service(db: MongoClient):
     )
 
 
-
-
-
-def create_job(submitter, document_path: str, mapping_id: str):
-    job = Job(document_path=document_path,)
+def create_job(submitter, document_path: str, mapping_id: str, session_auth: List[str]):
+    job = Job(document_path=document_path, session_auth=session_auth)
     job.id = str(uuid4())
     job.mapping_id = mapping_id
     job.submit_time = datetime.utcnow()
@@ -95,6 +92,7 @@ def create_job(submitter, document_path: str, mapping_id: str):
         status=job.status,
         submitter=submitter))
     service_context.ingest_jobs.insert_one(job.dict())
+    # TODO check that file exists and throw error 
     return job
 
 
@@ -126,7 +124,7 @@ def find_mapping(submitter, mapping_id: str) -> Mapping:
     if mapping_dict is None:
         return None
     revision = mapping_dict.pop('revision')
-    return Mapping(**mapping_dict), revision
+    return Mapping(**mapping_dict)
 
 
 def create_mapping(submitter, mapping: Mapping):
@@ -194,21 +192,28 @@ def ingest(submitter: str, job: Job) -> str:
         if mapping_with_revision is None:
             log = f"no mapping found for {job.id} - {job.mapping_id.name} {job.mapping_id.version}"
             logger.info(log)
-            set_job_status(job.id, StatusItem(time=datetime.utcnow(), status=JobStatus.error, submitter=submitter, log=log))
+            set_job_status(job.id, StatusItem(time=datetime.utcnow(),
+                           status=JobStatus.error, submitter=submitter, log=log))
             return
 
         if logger.isEnabledFor(logging.INFO):
             logger.info(f"mapping found for {job}")  
-        mapping = mapping_with_revision[0]
+        mapping = mapping_with_revision
         file = h5py.File(job.document_path, "r")
-        ingestor = MappedHD5Ingestor(mapping, file, 'mapping_ingestor', None)
+        ingestor = MappedHD5Ingestor(mapping, file, 'mapping_ingestor', job.session_auth)
         start_uid = None
         for name, document in ingestor.generate_docstream():
             if name == 'start':
                 start_uid = document['uid']
             bluesky_context.serializer(name, document)
-        log = f'succesfully ingested start doc: {start_uid}'
-        status = StatusItem(time=datetime.utcnow(), status=JobStatus.successful, submitter=submitter, log=log)
+        log = f'ingested start doc: {start_uid}'
+        if ingestor.issues and len(ingestor.issues) > 0:
+            for issue in ingestor.issues:
+                log += ("\n :" + issue)
+            status = StatusItem(time=datetime.utcnow(), status=JobStatus.complete_with_issues,
+                                submitter=submitter, log=log)
+        else:
+            status = StatusItem(time=datetime.utcnow(), status=JobStatus.successful, submitter=submitter, log=log)
         set_job_status(job.id, status)
         return start_uid
 

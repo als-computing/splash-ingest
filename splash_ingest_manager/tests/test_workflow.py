@@ -42,7 +42,7 @@ def test_jobs_init():
 def test_job_create():
     document_path = "/foo/bar.hdf5"
 
-    job = create_job("user1", document_path, "magrathia_42")
+    job = create_job("user1", document_path, "magrathia_42", ['deep_thought'])
     assert job.id is not None, "Job gets a new uid"
     assert job.submit_time is not None, "Job gets a submit time"
     assert job.submitter == "user1", "Job gets provided submitter"
@@ -66,8 +66,8 @@ def test_update_non_existant_job():
 def test_query_unstarted_jobs():
     document_path = "/foo/bar.hdf5"
 
-    job = create_job("user1", document_path, "magrathia")
-    job = create_job("user1", document_path, "magrathia")
+    job = create_job("user1", document_path, "magrathia", ['deep_thought'])
+    job = create_job("user1", document_path, "magrathia", ['deep_thought'])
 
     jobs = find_unstarted_jobs()
     for job in jobs:
@@ -105,9 +105,9 @@ def sample_file(tmp_path):
 def test_ingest(sample_file, init_mongomock):
     mapping = Mapping(**mapping_dict)
     create_mapping("slartibartfast", mapping)
-    mapping, revision = find_mapping("slartibartfast", "magrathia")
+    mapping = find_mapping("slartibartfast", "magrathia")
     assert mapping.resource_spec == "MultiKeySlice", "test a field"
-    job = create_job("user1", sample_file.filename, "magrathia")
+    job = create_job("user1", sample_file.filename, "magrathia", ["deep_thought"])
     start_uid = ingest("slartibartfast", job)
     job = find_job(job.id)
     assert job is not None

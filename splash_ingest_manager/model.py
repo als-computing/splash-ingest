@@ -14,6 +14,7 @@ class RevisionStamp(BaseModel):
 class JobStatus(str, Enum):
     submitted = 'submitted'
     running = 'running'
+    complete_with_issues = 'complete_with_issues'
     successful = 'successful'
     error = 'error'
 
@@ -31,6 +32,7 @@ class Job(BaseModel):
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
     document_path: str
+    session_auth: List[str]
     status: JobStatus = None
     mapping_id: Optional[str] = None
     submitter: Optional[str]

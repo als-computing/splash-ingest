@@ -1,7 +1,5 @@
-from re import L
 from pydantic import BaseModel, Field
 from typing import Dict, List, Optional
-
 
 
 class MDMapping(BaseModel):
@@ -23,7 +21,8 @@ class StreamMapping(BaseModel):
 class Mapping(BaseModel):
     name: str = Field(title='Mapping name', description='Name of this mapping')
     description: str = Field(title='Mapping description', description='Description of this mapping')
-    # version: str = Field(title='Mapping version', description='Version of this mapping')
-    resource_spec: str = Field(title='Resource spec', description='databroker.handler spec for the resource documnet produced by the ingestor. e.g. HDF, TIFFStack, etc.')
+    resource_spec: str = Field(title='Resource spec', description='databroker.handler spec for the resource document' +
+                                                                  'produced by the ingestor. e.g. HDF, TIFFStack, etc.')
     md_mappings: Optional[List[MDMapping]]
     stream_mappings: Optional[Dict[str, StreamMapping]]
+    projections: Optional[List[Dict]]

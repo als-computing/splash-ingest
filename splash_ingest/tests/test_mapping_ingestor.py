@@ -44,7 +44,15 @@ mapping_dict = {
                     {"field": "/process/acquisition/sample_position_x", "description": "tile_xmovedist"}
                 ]
             }
-        }
+        },
+        "projections": [{
+            "name": "foo_bar",
+            "version": "2020.1",
+            "configuration": None,
+            "projection": {
+                'sampel_name': {"type": "linked", "location": "start", "field": "sample"},
+            }
+        }]
     }
 
 
@@ -105,6 +113,7 @@ def test_hdf5_mapped_ingestor(sample_file):
         run_cache.callback(name, doc)
         if name == "start":
             assert doc[":measurement:sample:name"] == "my sample", "metadata in start doc"
+            assert doc["projections"][0]['name'] == "foo_bar", "projection is in start doc"
             start_found = True
             continue
         if name == "descriptor":
@@ -163,8 +172,8 @@ def test_mapped_ingestor_bad_stream_field(sample_file):
         }
     }
     ingestor = MappedHD5Ingestor(Mapping(**mapping_dict_bad_stream_field), sample_file, "test_root")
-    with pytest.raises(MappingNotFoundError):
-        list(ingestor.generate_docstream())
+    list(ingestor.generate_docstream())
+    assert "Error finding mapping" in ingestor.issues[0]
 
 
 def test_mapped_ingestor_bad_metadata_field(sample_file):
@@ -179,9 +188,8 @@ def test_mapped_ingestor_bad_metadata_field(sample_file):
         "stream_mappings": {}
     }
     ingestor = MappedHD5Ingestor(Mapping(**mapping_dict_bad_metadata_field), sample_file, "test_root")
-    with pytest.raises(MappingNotFoundError):
-        for name, in ingestor.generate_docstream():
-            pass
+    list(ingestor.generate_docstream())
+    assert "Error finding mapping" in ingestor.issues[0]
 
 
 def test_calc_num_events(sample_file):
@@ -210,11 +218,8 @@ def test_timestamp_error(sample_file):
     }
     ingestor = MappedHD5Ingestor(Mapping(**mapping), sample_file, "test_root")
 
-    with pytest.raises(EmptyTimestampsError) as ex_info:
-        list(ingestor.generate_docstream())
-    assert ex_info.value.args[0] == "do_not_cross"
-    assert ex_info.value.args[1] == "/does/not/exist"
-
+    list(ingestor.generate_docstream())
+    assert "Error fetching timestamp" in ingestor.issues[0]
 
 def test_key_transformation():
     key = "/don't panic"

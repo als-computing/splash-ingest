@@ -1,5 +1,5 @@
 import logging
-from typing import Optional
+from typing import Optional, List
 
 from fastapi import Security, Depends, FastAPI, HTTPException
 from fastapi.security.api_key import APIKeyQuery, APIKeyCookie, APIKeyHeader, APIKey
@@ -22,7 +22,7 @@ from splash_ingest.model import Mapping
 from splash_ingest_manager.model import Job
 
 API_KEY_NAME = "api_key"
-
+INGEST_JOBS_API = 'ingest_jobs'
 
 api_key_query = APIKeyQuery(name=API_KEY_NAME, auto_error=False)
 api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
@@ -34,6 +34,8 @@ SPLASH_DB_NAME = config("SPLASH_DB_NAME", cast=str, default="splash")
 SPLASH_LOG_LEVEL = config("SPLASH_LOG_LEVEL", cast=str, default="INFO")
 
 logger = logging.getLogger('splash_ingest')
+
+
 def init_logging():
 
     ch = logging.StreamHandler()
@@ -80,12 +82,11 @@ async def get_api_key_from_request(
         )
 
 
-INGEST_JOBS_API = 'ingest_jobs'
-
-
 class CreateJobRequest(BaseModel):
     file_path: str = Field(description="path to where file to ingest is located")
     mapping_name: str = Field(description="mapping name, used to find mapping file in database")
+    session_auth: List[str] = Field(description="adds session authorization filters" +
+                                                "that will be inserted into start document")
 
 
 class CreateJobResponse(BaseModel):
@@ -104,7 +105,8 @@ async def submit_job(request: CreateJobRequest, api_key: APIKey = Depends(get_ap
     job = create_job(
         client_key.client,
         request.file_path,
-        request.mapping_name)
+        request.mapping_name,
+        request.session_auth)
     return CreateJobResponse(message="success", job_id=job.id)
   
 

@@ -34,7 +34,7 @@ class MappedHD5Ingestor():
 
 
     """
-    def __init__(self, mapping: Mapping, file, reference_root_name, projections=None):
+    def __init__(self, mapping: Mapping, file, reference_root_name, projections=None, session_auth=[]):
         """
 
         Parameters
@@ -55,6 +55,12 @@ class MappedHD5Ingestor():
         self._file = file
         self._reference_root_name = reference_root_name
         self._projections = projections
+        self._session_auth = session_auth
+        self._issues = []
+
+    @property
+    def issues(self):
+        return self._issues
 
     def generate_docstream(self):
         """Generates docstream documents
@@ -81,6 +87,7 @@ class MappedHD5Ingestor():
         run_bundle = event_model.compose_run(metadata=metadata)
         start_doc = run_bundle.start_doc
         start_doc['projections'] = self._projections
+        start_doc['session_auth'] = self._session_auth
         yield 'start', start_doc
 
         hd5_resource = run_bundle.compose_resource(
@@ -112,9 +119,11 @@ class MappedHD5Ingestor():
                     try:
                         time_stamp_dataset = self._file[stream_timestamp_field][()]
                     except Exception as e:
-                        raise EmptyTimestampsError(stream_name, stream_timestamp_field) from e
+                        self._issues.append(f"Error fetching timestamp for {stream_name} slice: {str(x)} - {str(e.args[0])}")
+                        break
                     if time_stamp_dataset is None or len(time_stamp_dataset) == 0:
-                        raise EmptyTimestampsError(stream_name, stream_timestamp_field)
+                        self._issues.append(f"Missing timestapm for {stream_name} slice: {str(x)}")
+                        break
                     event_data = {}
                     event_timestamps = {}
                     filled_fields = {}
@@ -151,6 +160,7 @@ class MappedHD5Ingestor():
         stop_doc = run_bundle.compose_stop()
         yield 'stop', stop_doc
 
+
     def _extract_metadata(self):
         metadata = {}
         for mapping in self._mapping.md_mappings:
@@ -161,7 +171,8 @@ class MappedHD5Ingestor():
                 data_value = self._file[mapping.field]
                 metadata[encoded_key] = data_value[()].item().decode()
             except Exception as e:
-                raise MappingNotFoundError('metadata', mapping.field) from e
+                self._issues.append(f"Error finding mapping {encoded_key} - {str(e.args)}")
+                continue
         return metadata
 
     def _extract_stream_descriptor_keys(self, stream_mapping: StreamMapping):
@@ -170,11 +181,12 @@ class MappedHD5Ingestor():
             # build an event_model descriptor
             try:
                 hdf5_dataset = self._file[mapping_field.field]
-            except Exception:
-                raise MappingNotFoundError('stream', mapping_field.field)
+            except Exception as e:
+                self._issues.append(f"Error finding mapping {mapping_field} - {str(e.args)}")
+                continue
             units = hdf5_dataset.attrs.get('units')
             if units is not None:
-                units = units.decoe()
+                units = units.decode()
             descriptor = dict(
                     dtype='number',
                     source='file',

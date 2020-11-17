@@ -219,3 +219,17 @@ def test_timestamp_error(sample_file):
 def test_key_transformation():
     key = "/don't panic"
     assert decode_key(encode_key(key)) == key, "Encoded then decoded key is equal"
+
+
+def test_session_auth(sample_file):
+    ingestor = MappedHD5Ingestor(Mapping(**mapping_dict), sample_file, "test_root")
+    for name, doc in ingestor.generate_docstream():
+        if name == 'start':
+            assert doc['session_auth'] == []
+            continue
+
+    ingestor = MappedHD5Ingestor(Mapping(**mapping_dict), sample_file, "test_root", session_auth=['bealine1', 'users1'])
+    for name, doc in ingestor.generate_docstream():
+        if name == 'start':
+            assert doc['session_auth'] == ['bealine1', 'users1']
+            continue

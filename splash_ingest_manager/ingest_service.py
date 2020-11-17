@@ -180,7 +180,7 @@ def ingest(submitter: str, job: Job) -> str:
         if persisted_job.status != JobStatus.submitted:
             logger.info(f"Job {job.id} on document {job.document_path} already started, exiting.")
             return
-   
+
         set_job_status(job.id,
                        StatusItem(
                         time=datetime.utcnow(),

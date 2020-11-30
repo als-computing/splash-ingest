@@ -5,23 +5,19 @@ mapping_dict = {
         "resource_spec": "MultiKeySlice",
         "md_mappings": [
             {"field": "/measurement/sample/name"},
-            {"field": "/measurement/instrument/name"}
+            {"field": "/measurement/instrument/name"},
+            {"field": "/measurement/sample/experimenter/name"},
+            {"field": "/measurement/sample/experiment/proposal"},
+            {"field": "/measurement/sample/experiment/title"},
+            {"field": "/process/acquisition/start_date"}
         ],
         "stream_mappings": {
             "primary":{
-                "time_stamp": "/process/acquisition/image_date",
+                "time_stamp": "/defaults/NDArrayTimeStamp",
                 "mapping_fields": [
                     {"field": "/exchange/data", "external": True},
                 ]
 
-            },
-             "darks":{
-                "time_stamp": "/process/acquisition/image_date",
-                "mapping_fields": [
-                    {"field": "/exchange/dark", "external": True},
-                ]
-
-            },
-
+            }
         }
 }

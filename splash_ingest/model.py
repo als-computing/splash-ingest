@@ -16,6 +16,7 @@ class StreamMappingField(BaseModel):
 class StreamMapping(BaseModel):
     mapping_fields: List[StreamMappingField]
     time_stamp: str = Field(title='time_stamp field', description='field to use to get time stamp values')
+    thumbnail: Optional[bool] = Field(title="determines whether to treat stream as thumbnail")
 
 
 class Mapping(BaseModel):

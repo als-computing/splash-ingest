@@ -15,7 +15,7 @@ from pymongo.collection import Collection
 from suitcase.mongo_normalized import Serializer
 
 from splash_ingest.model import Mapping
-from splash_ingest import MappedHD5Ingestor
+from splash_ingest.ingestors import MappedHD5Ingestor
 from .model import Job, JobStatus, StatusItem, RevisionStamp
 
 logger = logging.getLogger('splash_ingest.ingest_service')

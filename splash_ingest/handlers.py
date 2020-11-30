@@ -18,4 +18,6 @@ class MultiKeyHDF5DatasetSliceHandler(HDF5DatasetSliceHandlerPureNumpy):
 
         start = point_number * self._fpp
         stop = (point_number + 1) * self._fpp
-        return dask.array.from_array(self._datasets[key])[start:stop].squeeze(0)  # TODO take out squeeze?
+        # print(str(point_number))
+        return dask.array.from_array(self._datasets[key])[start:stop][0, :, :] 
+        # return self._datasets[key][start:stop][0, :, :]

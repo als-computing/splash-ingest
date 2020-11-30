@@ -1,4 +1,5 @@
 import datetime
+from logging import debug
 from unittest import result
 import h5py
 import numpy as np
@@ -6,7 +7,7 @@ import pytest
 import pytz
 
 from databroker.core import SingleRunCache
-from splash_ingest import (
+from splash_ingest.ingestors import (
     MappedHD5Ingestor,
     MappingNotFoundError,
     EmptyTimestampsError,
@@ -42,6 +43,13 @@ mapping_dict = {
                 "mapping_fields": [
                     {"field": "/exchange/dark", "external": True},
                     {"field": "/process/acquisition/sample_position_x", "description": "tile_xmovedist"}
+                ]
+            },
+            "thumbnail": {
+                "thumbnail": True,
+                "time_stamp": "/process/acquisition/time_stamp",
+                "mapping_fields": [
+                    {"field": "/exchange/data", "external": True}
                 ]
             }
         },
@@ -139,13 +147,14 @@ def test_hdf5_mapped_ingestor(sample_file):
     assert start_found, "a start document was produced"
     assert stop_found, "a stop document was produced"
 
-    assert len(descriptors) == 2, "return two descriptors"
+    assert len(descriptors) == 3, "return two descriptors"
     assert descriptors[0]["name"] == "primary", "first descriptor is primary"
     assert descriptors[1]["name"] == "darks", "second descriptor is darks"
+    assert descriptors[2]["name"] == "thumbnail", "third is a thumbnail"
     assert len(descriptors[0]["data_keys"].keys()) == 2, "primary has two data_keys"
 
-    assert len(result_datums) == num_frames_primary + num_frames_darks
-    assert len(result_events) == num_frames_primary + num_frames_darks
+    assert len(result_datums) == num_frames_primary + num_frames_darks + 1
+    assert len(result_events) == num_frames_primary + num_frames_darks + 1
 
     run = run_cache.retrieve()
     stream = run["primary"].to_dask()

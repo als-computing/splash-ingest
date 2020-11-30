@@ -111,7 +111,7 @@ def test_ingest(sample_file, init_mongomock):
     start_uid = ingest("slartibartfast", job)
     job = find_job(job.id)
     assert job is not None
-    assert job.status == JobStatus.successful, 'injest completed'
+    assert job.status == JobStatus.successful, f'injest completed  {job.status_history}'
 
     assert bluesky_context.db['run_start'].find_one({"uid": start_uid}) is not None, "job wrote start doc"
 

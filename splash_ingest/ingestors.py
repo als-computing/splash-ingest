@@ -180,7 +180,7 @@ class MappedHD5Ingestor():
 
     def _build_thumbnail(self, uid, directory, data):
         middle_image = round(data.shape[0] / 2)
-        log_image = np.array(data.value[middle_image, :, :])
+        log_image = np.array(data[middle_image, :, :])
         log_image = log_image - np.min(log_image) + 1.001
         log_image = np.log(log_image)
         log_image = 205*log_image/(np.max(log_image))

@@ -1,6 +1,6 @@
 import datetime
-from logging import debug
-from unittest import result
+import os
+from pathlib import Path
 import h5py
 import numpy as np
 import pytest
@@ -32,6 +32,7 @@ mapping_dict = {
         ],
         "stream_mappings": {
             "primary": {
+                "thumbnail": True,
                 "time_stamp": "/process/acquisition/time_stamp",
                 "mapping_fields": [
                     {"field": "/exchange/data", "external": True},
@@ -45,13 +46,6 @@ mapping_dict = {
                     {"field": "/process/acquisition/sample_position_x", "description": "tile_xmovedist"}
                 ]
             },
-            "thumbnail": {
-                "thumbnail": True,
-                "time_stamp": "/process/acquisition/time_stamp",
-                "mapping_fields": [
-                    {"field": "/exchange/data", "external": True}
-                ]
-            }
         },
         "projections": [{
             "name": "foo_bar",
@@ -109,20 +103,22 @@ def sample_file(tmp_path):
     file.close()
 
 
-def test_hdf5_mapped_ingestor(sample_file):
-    ingestor = MappedHD5Ingestor(Mapping(**mapping_dict), sample_file, "test_root")
+def test_hdf5_mapped_ingestor(sample_file, tmp_path):
+    ingestor = MappedHD5Ingestor(Mapping(**mapping_dict), sample_file, "test_root", thumbs_root=tmp_path)
     run_cache = SingleRunCache()
     descriptors = []
     result_events = []
     result_datums = []
     start_found = False
     stop_found = False
+    run_uid = ""
     for name, doc in ingestor.generate_docstream():
         run_cache.callback(name, doc)
         if name == "start":
             assert doc[":measurement:sample:name"] == "my sample", "metadata in start doc"
             assert doc["projections"][0]['name'] == "foo_bar", "projection is in start doc"
             start_found = True
+            run_uid = doc['uid']
             continue
         if name == "descriptor":
             descriptors.append(doc)
@@ -147,18 +143,21 @@ def test_hdf5_mapped_ingestor(sample_file):
     assert start_found, "a start document was produced"
     assert stop_found, "a stop document was produced"
 
-    assert len(descriptors) == 3, "return two descriptors"
+    assert len(descriptors) == 2, "return two descriptors"
     assert descriptors[0]["name"] == "primary", "first descriptor is primary"
     assert descriptors[1]["name"] == "darks", "second descriptor is darks"
-    assert descriptors[2]["name"] == "thumbnail", "third is a thumbnail"
     assert len(descriptors[0]["data_keys"].keys()) == 2, "primary has two data_keys"
 
-    assert len(result_datums) == num_frames_primary + num_frames_darks + 1
-    assert len(result_events) == num_frames_primary + num_frames_darks + 1
+    assert len(result_datums) == num_frames_primary + num_frames_darks
+    assert len(result_events) == num_frames_primary + num_frames_darks
 
     run = run_cache.retrieve()
     stream = run["primary"].to_dask()
     assert stream
+    dir = Path(tmp_path)
+    file = run_uid + ".png"
+    assert Path(dir / file).exists()
+
 
 
 def test_mapped_ingestor_bad_stream_field(sample_file):
@@ -235,15 +234,15 @@ def test_key_transformation():
     assert decode_key(encode_key(key)) == key, "Encoded then decoded key is equal"
 
 
-def test_session_auth(sample_file):
+def test_auth_session(sample_file):
     ingestor = MappedHD5Ingestor(Mapping(**mapping_dict), sample_file, "test_root")
     for name, doc in ingestor.generate_docstream():
         if name == 'start':
-            assert doc['session_auth'] == []
+            assert doc['auth_session'] == []
             continue
 
-    ingestor = MappedHD5Ingestor(Mapping(**mapping_dict), sample_file, "test_root", session_auth=['bealine1', 'users1'])
+    ingestor = MappedHD5Ingestor(Mapping(**mapping_dict), sample_file, "test_root", auth_session=['bealine1', 'users1'])
     for name, doc in ingestor.generate_docstream():
         if name == 'start':
-            assert doc['session_auth'] == ['bealine1', 'users1']
+            assert doc['auth_session'] == ['bealine1', 'users1']
             continue

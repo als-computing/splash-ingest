@@ -1,6 +1,11 @@
 import logging
+from pathlib import Path
 from typing import List
+
 import event_model
+import numpy as np
+from PIL import Image, ImageOps
+
 from .model import (
     Mapping,
     StreamMapping,
@@ -23,6 +28,7 @@ class FieldNotInResourceError(Exception):
         self.field = field
         super().__init__(f"Cannot find mapping timestamps for stream {stream} using timestamp mapping: {field}")
 
+
 class EmptyTimestampsError(Exception):
     def __ini__(self, stream, field):
         self.stream = stream
@@ -40,7 +46,7 @@ class MappedHD5Ingestor():
 
 
     """
-    def __init__(self, mapping: Mapping, file, reference_root_name, session_auth=[]):
+    def __init__(self, mapping: Mapping, file, reference_root_name, auth_session=[], thumbs_root=None):
         """
 
         Parameters
@@ -60,7 +66,8 @@ class MappedHD5Ingestor():
         self._mapping = mapping
         self._file = file
         self._reference_root_name = reference_root_name
-        self._session_auth = session_auth
+        self._auth_session = auth_session
+        self._thumbs_root = thumbs_root
         self._issues = []
 
     @property
@@ -92,7 +99,7 @@ class MappedHD5Ingestor():
         run_bundle = event_model.compose_run(metadata=metadata)
         start_doc = run_bundle.start_doc
         start_doc['projections'] = self._mapping.projections
-        start_doc['session_auth'] = self._session_auth
+        start_doc['auth_session'] = self._auth_session
         yield 'start', start_doc
 
         hd5_resource = run_bundle.compose_resource(
@@ -102,6 +109,7 @@ class MappedHD5Ingestor():
             resource_kwargs={})
         yield 'resource', hd5_resource.resource_doc
 
+        thumbnail_created = False  # for now, we'll just created one thumbnail per run, first 2d image we find
         # produce documents for each stream
         stream_mappings: StreamMapping = self._mapping.stream_mappings
         if stream_mappings is not None:
@@ -121,8 +129,7 @@ class MappedHD5Ingestor():
                     self.issues.append(e)
                 if num_events == 0:  # test this
                     continue
-                if mapping.thumbnail:
-                    num_events = 1
+
                 # produce documents for each event (event and datum)
                 for x in range(0, num_events):
                     try:
@@ -131,7 +138,7 @@ class MappedHD5Ingestor():
                         self._issues.append(f"Error fetching timestamp for {stream_name} slice: {str(x)} - {str(e.args[0])}")
                         break
                     if time_stamp_dataset is None or len(time_stamp_dataset) == 0:
-                        self._issues.append(f"Missing timestapm for {stream_name} slice: {str(x)}")
+                        self._issues.append(f"Missing timestamp for {stream_name} slice: {str(x)}")
                         break
                     event_data = {}
                     event_timestamps = {}
@@ -141,6 +148,9 @@ class MappedHD5Ingestor():
                         # Go through each field in the stream. If field not marked
                         # as external, extract the value. Otherwise create a datum
                         dataset = self._file[field.field]
+                        if not thumbnail_created and self._thumbs_root is not None and len(dataset.shape) == 3:
+                            self._build_thumbnail(start_doc['uid'], self._thumbs_root, dataset)
+                            thumbnail_created = True
                         encoded_key = encode_key(field.field)
                         event_timestamps[encoded_key] = time_stamp_dataset[x]
                         if field.external:
@@ -158,7 +168,6 @@ class MappedHD5Ingestor():
                             if logger.isEnabledFor(logging.INFO):
                                 logger.info(f'event for {field.external} inserted in event')
                             event_data[encoded_key] = dataset[x]
-
                     yield 'event', stream_bundle.compose_event(
                         data=event_data,
                         filled=filled_fields,
@@ -166,36 +175,24 @@ class MappedHD5Ingestor():
                         timestamps=event_timestamps
                     )
 
-        # # build thumbnail
-        # thumbnail_field = "/exchange/data"
-        # hdf5_dataset = self._file["/exchange/data"]
-        # num_field = hdf5_dataset.shape[0]
-        # middle_index = round(num_field / 2)
-        # # frame_data = hdf5_dataset[middle_index, :, :]
-        # encoded_key = encode_key(thumbnail_field)
-        # descriptor = dict(
-        #             dtype='number',
-        #             source='file',
-        #             external='FILESTORE:',
-        #             shape=hdf5_dataset.shape[1::])
-        # thumbnail_bundle = run_bundle.compose_descriptor(
-        #             data_keys= {"image": descriptor},
-        #             name="thumbnail")
-        # yield 'descriptor', thumbnail_bundle.descriptor_doc
-        # datum = hd5_resource.compose_datum(datum_kwargs={
-        #                             "key": encoded_key,
-        #                             "point_number": 0})  # need kwargs for HDF5 datum
-        # yield 'datum', datum
-        # # event_data = {"image": frame_data}
-        # yield 'event', thumbnail_bundle.compose_event(
-        #                 data={"image": datum['datum_id']},
-        #                 filled={'image': False},
-        #                 seq_num=1,
-        #                 timestamps={"image": 1234}
-        #             )
         stop_doc = run_bundle.compose_stop()
         yield 'stop', stop_doc
 
+    def _build_thumbnail(self, uid, directory, data):
+        middle_image = round(data.shape[0] / 2)
+        log_image = np.array(data.value[middle_image, :, :])
+        log_image = log_image - np.min(log_image) + 1.001
+        log_image = np.log(log_image)
+        log_image = 205*log_image/(np.max(log_image))
+        auto_contrast_image = Image.fromarray(log_image.astype('uint8'))
+        auto_contrast_image = ImageOps.autocontrast(
+                                auto_contrast_image, cutoff=0.1)
+        # auto_contrast_image = resize(np.array(auto_contrast_image),
+                                                # (size, size))                   
+        dir = Path(directory)
+        filename = uid + ".png"
+        # file = io.BytesIO()
+        auto_contrast_image.save(dir / filename, format='PNG')
 
     def _extract_metadata(self):
         metadata = {}

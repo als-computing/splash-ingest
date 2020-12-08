@@ -32,7 +32,7 @@ class Job(BaseModel):
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
     document_path: str
-    session_auth: List[str]
+    auth_session: List[str]
     status: JobStatus = None
     mapping_id: Optional[str] = None
     submitter: Optional[str]

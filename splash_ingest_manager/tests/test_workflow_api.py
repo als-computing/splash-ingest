@@ -24,7 +24,7 @@ def client():
 def test_create_job_api(client: TestClient):
     key = create_api_client('user1', 'sirius_cybernetics_gpp', INGEST_JOBS_API)
     request = CreateJobRequest(file_path="/foo/bar.hdf5", mapping_name="beamline_mappings",
-                               mapping_version="42", session_auth=['bl42'])
+                               mapping_version="42", auth_session=['bl42'])
     response: CreateJobResponse = client.post(url="/api/ingest/jobs", data=request.json(), headers={API_KEY_NAME: key})
     assert response.status_code == 200
     job_id = response.json()['job_id']
@@ -48,3 +48,9 @@ def test_mapping_api(client: TestClient):
                           headers={API_KEY_NAME: key})
     mapping = Mapping(**response.json())   # first item because we have a version tag in there
     assert mapping.name == "foo"
+
+
+def test_job_not_found(client: TestClient):
+    key = create_api_client('user1', 'sirius_cybernetics_gpp', INGEST_JOBS_API)
+    response = client.get(url="/api/ingest/jobs/BAD_ID" + "?" + API_KEY_NAME + "=" + key)
+    assert response.status_code == 404, "404 with unknown job id"

@@ -13,6 +13,7 @@ SPLASH_DB_NAME = config("SPLASH_DB_NAME", cast=str, default="splash")
 SPLASH_LOG_LEVEL = config("SPLASH_LOG_LEVEL", cast=str, default="INFO")
 POLLER_MAX_THREADS = config("POLLER_MAX_THREADS", cast=int, default=1)
 POLLER_SLEEP_SECONDS = config("POLLER_SLEEP_SECONDS", cast=int, default=5)
+THUMBS_ROOT = config("THUMBS_ROOT", cast=str, default="thumbs")
 logger = logging.getLogger('splash_ingest')
 
 
@@ -31,4 +32,4 @@ init_logging()
 logger.info("starting poller")
 db = MongoClient(MONGO_DB_URI)[SPLASH_DB_NAME]
 init_ingest_service(db)
-poll_for_new_jobs(POLLER_SLEEP_SECONDS)
+poll_for_new_jobs(POLLER_SLEEP_SECONDS, THUMBS_ROOT)

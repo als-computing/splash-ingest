@@ -15,7 +15,8 @@ from .ingest_service import (
     find_job,
     find_unstarted_jobs,
     create_mapping,
-    find_mapping
+    find_mapping,
+    JobNotFoundError
     )
 
 from splash_ingest.model import Mapping
@@ -85,7 +86,7 @@ async def get_api_key_from_request(
 class CreateJobRequest(BaseModel):
     file_path: str = Field(description="path to where file to ingest is located")
     mapping_name: str = Field(description="mapping name, used to find mapping file in database")
-    session_auth: List[str] = Field(description="adds session authorization filters" +
+    auth_session: List[str] = Field(description="adds session authorization filters" +
                                                 "that will be inserted into start document")
 
 
@@ -106,7 +107,7 @@ async def submit_job(request: CreateJobRequest, api_key: APIKey = Depends(get_ap
         client_key.client,
         request.file_path,
         request.mapping_name,
-        request.session_auth)
+        request.auth_session)
     return CreateJobResponse(message="success", job_id=job.id)
   
 
@@ -119,6 +120,8 @@ async def get_job(job_id: str, api_key: APIKey = Depends(get_api_key_from_reques
             raise HTTPException(status_code=403)
         job = find_job(job_id)
         return job
+    except JobNotFoundError:
+        raise HTTPException(404)
     except Exception as e:
         logger.error(e)
         raise e

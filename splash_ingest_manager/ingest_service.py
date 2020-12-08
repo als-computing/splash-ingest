@@ -23,6 +23,9 @@ logger = logging.getLogger('splash_ingest.ingest_service')
 # in unit testing
 
 
+class JobNotFoundError(Exception):
+    pass
+
 @dataclass
 class ServiceMongoCollectionsContext():
     db: MongoClient = None
@@ -80,8 +83,8 @@ def init_ingest_service(db: MongoClient):
     )
 
 
-def create_job(submitter, document_path: str, mapping_id: str, session_auth: List[str]):
-    job = Job(document_path=document_path, session_auth=session_auth)
+def create_job(submitter, document_path: str, mapping_id: str, auth_session: List[str]):
+    job = Job(document_path=document_path, auth_session=auth_session)
     job.id = str(uuid4())
     job.mapping_id = mapping_id
     job.submit_time = datetime.utcnow()
@@ -98,6 +101,8 @@ def create_job(submitter, document_path: str, mapping_id: str, session_auth: Lis
 
 def find_job(job_id: str) -> Job:
     job_dict = service_context.ingest_jobs.find_one({"id": job_id})
+    if not job_dict:
+        raise JobNotFoundError(f"Job not found {job_id}")
     return Job(**job_dict)
 
 
@@ -137,7 +142,7 @@ def create_mapping(submitter, mapping: Mapping):
     return id
 
 
-def poll_for_new_jobs(sleep_interval=5):
+def poll_for_new_jobs(sleep_interval=5, thumbs_root=None):
     logger.info(f"Beginning polling, waiting {sleep_interval} each time")
     while True:
         try:
@@ -149,12 +154,12 @@ def poll_for_new_jobs(sleep_interval=5):
             else:
                 job: Job = job_list[-1]
                 logger.info(f"ingesting path: {job.document_path} mapping: {job.mapping_id}")
-                ingest('system', job_list[-1])
+                ingest('system', job_list[-1], thumbs_root)
         except Exception as e:
             logger.exception('polling thread exception', e)
 
 
-def ingest(submitter: str, job: Job) -> str:
+def ingest(submitter: str, job: Job, thumbs_root=None) -> str:
     """Updates job status and calls ingest method specified in job
 
     Parameters
@@ -200,7 +205,7 @@ def ingest(submitter: str, job: Job) -> str:
             logger.info(f"mapping found for {job}")  
         mapping = mapping_with_revision
         file = h5py.File(job.document_path, "r")
-        ingestor = MappedHD5Ingestor(mapping, file, 'mapping_ingestor', job.session_auth)
+        ingestor = MappedHD5Ingestor(mapping, file, 'mapping_ingestor', job.auth_session, thumbs_root=thumbs_root)
         start_uid = None
         for name, document in ingestor.generate_docstream():
             if name == 'start':

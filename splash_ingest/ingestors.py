@@ -6,6 +6,10 @@ import event_model
 import numpy as np
 from PIL import Image, ImageOps
 
+from bluesky_live.bluesky_run import BlueskyRun, DocumentCache
+from bluesky_widgets.models import auto_plot_builders
+from bluesky_widgets.headless.figures import HeadlessFigures
+
 from .model import (
     Mapping,
     StreamMapping,
@@ -58,7 +62,7 @@ class MappedHD5Ingestor():
         reference_root_name : str
             placed into the root field of the generated resource document...when
             a docstream is used by databroker, this will map the the root_map field
-            in intake configuration. 
+            in intake configuration.
         projections : dict, optional
             projection to insert into the run_start document, by default None
         """
@@ -77,7 +81,7 @@ class MappedHD5Ingestor():
     def generate_docstream(self):
         """Generates docstream documents
         Several things to note about what documnets are produced:
-    
+
         - run_stop : one run stop document will be produced. Fields will be added
         at the root level that correspond to the md_mappings section of the Mappings.
         Additionally, if projections are provided in the init, they will be added at the root.
@@ -97,6 +101,10 @@ class MappedHD5Ingestor():
         """
         logger.info(f"Beginning ingestion for {self._file} using mapping {self._mapping.name}"
                     " for data_groups {self._data_groups}")
+        # As we compose new documents, we will add them to this in-memory
+        # DocumentCache and yield them. At the end, we'll wrap this cache in a
+        # BlueskyRun and use them to create thumbnail/preview images.
+        document_cache = DocumentCache()
         metadata = self._extract_metadata()
         if logger.isEnabledFor(logging.DEBUG):
             keys = metadata.keys()
@@ -105,6 +113,7 @@ class MappedHD5Ingestor():
         start_doc = run_bundle.start_doc
         start_doc['projections'] = self._mapping.projections
         start_doc['data_groups'] = self._data_groups
+        document_cache('start', start_doc)
         yield 'start', start_doc
         if logger.isEnabledFor(logging.DEBUG):
             logger.debug(f"run: {start_doc['uid']} Start doc created")
@@ -115,9 +124,9 @@ class MappedHD5Ingestor():
             resource_kwargs={})
         if logger.isEnabledFor(logging.DEBUG):
             logger.debug(f"run: {start_doc['uid']} resource doc created uid: {hd5_resource.resource_doc['uid']}")
+        document_cache('resource', hd5_resource.resource_doc)
         yield 'resource', hd5_resource.resource_doc
 
-        thumbnail_created = False  # for now, we'll just created one thumbnail per run, first 2d image we find
         # produce documents for each stream
         stream_mappings: StreamMapping = self._mapping.stream_mappings
         if stream_mappings is not None:
@@ -135,6 +144,7 @@ class MappedHD5Ingestor():
                     logger.debug(f"run: {start_doc['uid']} Creating descriptor with "
                                  f"uid: {stream_bundle.descriptor_doc['uid']}")
                 yield 'descriptor', stream_bundle.descriptor_doc
+                document_cache('descriptor', stream_bundle.descriptor_doc)
                 num_events = 0
                 try:
                     num_events = calc_num_events(mapping.mapping_fields, self._file)
@@ -164,9 +174,6 @@ class MappedHD5Ingestor():
                         # Go through each field in the stream. If field not marked
                         # as external, extract the value. Otherwise create a datum
                         dataset = self._file[field.field]
-                        if not thumbnail_created and self._thumbs_root is not None and len(dataset.shape) == 3:
-                            self._build_thumbnail(start_doc['uid'], self._thumbs_root, dataset)
-                            thumbnail_created = True
                         encoded_key = encode_key(field.field)
                         event_timestamps[encoded_key] = time_stamp_dataset[x]
                         if field.external:
@@ -178,6 +185,7 @@ class MappedHD5Ingestor():
                                     "point_number": x})  # need kwargs for HDF5 datum
                             # if logger.isEnabledFor(logging.DEBUG):
                             #     logger.debug(f"run: {start_doc['uid']} Creating datum with uid: {datum['datum_id']}")
+                            document_cache('datum', datum)
                             yield 'datum', datum
                             event_data[encoded_key] = datum['datum_id']
                             filled_fields[encoded_key] = False
@@ -186,39 +194,34 @@ class MappedHD5Ingestor():
                             if logger.isEnabledFor(logging.INFO):
                                 logger.info(f'event for {field.external} inserted in event')
                             event_data[encoded_key] = dataset[x]
-                    
                     event = stream_bundle.compose_event(
                         data=event_data,
                         filled=filled_fields,
                         seq_num=x,
                         timestamps=event_timestamps
                     )
+                    document_cache('event', event)
                     if logger.isEnabledFor(logging.DEBUG):
                         logger.debug(f"run: {start_doc['uid']} Creating event with uid: {event['uid']}")
                     yield 'event', event
 
         stop_doc = run_bundle.compose_stop()
+        document_cache('stop', stop_doc)
+        bluesky_run = BlueskyRun(document_cache)
         if logger.isEnabledFor(logging.DEBUG):
             logger.debug(f"run: {start_doc['uid']} stop doc {str(stop_doc)}")
         yield 'stop', stop_doc
+        if self._thumbs_root is not None:
+            self._build_thumbnail(start_doc["uid"], self._thumbs_root, bluesky_run)
         if len(self._issues) > 0:
             logger.info(f" run: {start_doc['uid']} had issues {str(self._issues)}")
 
-    def _build_thumbnail(self, uid, directory, data):
-        middle_image = round(data.shape[0] / 2)
-        log_image = np.array(data[middle_image, :, :])
-        log_image = log_image - np.min(log_image) + 1.001
-        log_image = np.log(log_image)
-        log_image = 205*log_image/(np.max(log_image))
-        auto_contrast_image = Image.fromarray(log_image.astype('uint8'))
-        auto_contrast_image = ImageOps.autocontrast(
-                                auto_contrast_image, cutoff=0.1)
-        # auto_contrast_image = resize(np.array(auto_contrast_image),
-                                                # (size, size))                   
-        dir = Path(directory)
-        filename = uid + ".png"
-        # file = io.BytesIO()
-        auto_contrast_image.save(dir / filename, format='PNG')
+    def _build_thumbnail(self, uid, directory, bluesky_run):
+        model = SplashAutoImages()
+        model.add_run(bluesky_run)
+        view = HeadlessFigures(model.figures)
+        filenames = view.export_all(Path(directory, uid), format='png')
+        print("WROTE", filenames)
 
     def _extract_metadata(self):
         metadata = {}
@@ -276,9 +279,48 @@ def calc_num_events(mapping_fields: List[StreamMappingField], file):
     name = mapping_fields[0].field
     try:
         return file[name].shape[0]
-    except KeyError as e:
+    except KeyError:
         raise FieldNotInResourceError("timestamp check", name)
 
-from ._version import get_versions
+
+def _log_and_auto_contrast(data):
+    log_image = data - np.min(data) + 1.001
+    log_image = np.log(log_image)
+    log_image = 205*log_image/(np.max(log_image))
+    auto_contrast_image = Image.fromarray(log_image.astype('uint8'))
+    auto_contrast_image = ImageOps.autocontrast(
+                            auto_contrast_image, cutoff=0.1)
+    return np.asarray(auto_contrast_image)
+
+
+class _ImageWithCustomScaling(auto_plot_builders._ShimmedImage):
+    ...
+
+    # def _transform(self, run, field):
+    #     # I am not 100% sure this is the best language feature to use for injecting
+    #     # a custom transform but otherwise reusing the rest of the logic in Images.
+    #     # That's why this method is currently private. This will either become
+    #     # public or we'll choose a different mechanism. - Dan Allan, Dec 2020
+
+    #     # The base class gives us a 2D image by slicing the middle of any
+    #     # higher dimensions.
+    #     data = super()._transform(run, field)
+    #     return _log_and_auto_contrast(data)
+
+
+class SplashAutoImages(auto_plot_builders.AutoImages):
+    """
+    A plot builder
+
+    Reuse `Images` plot builder but wrap it in particular logic for scaling.
+    Also reuse AutoImages' heuristic for identifying images in a Run.
+    """
+
+    @property
+    def _plot_builder(self):
+        return _ImageWithCustomScaling
+
+
+from ._version import get_versions  # noqa: E402
 __version__ = get_versions()['version']
 del get_versions

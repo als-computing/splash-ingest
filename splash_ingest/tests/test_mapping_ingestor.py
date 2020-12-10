@@ -154,9 +154,9 @@ def test_hdf5_mapped_ingestor(sample_file, tmp_path):
     run = run_cache.retrieve()
     stream = run["primary"].to_dask()
     assert stream
-    dir = Path(tmp_path)
-    file = run_uid + ".png"
-    assert Path(dir / file).exists()
+    directory = Path(tmp_path, run_uid)
+    # The directory {thumbs_root}/{run_uid}/ should have at least one file in it.
+    assert os.listdir(directory)
 
 
 

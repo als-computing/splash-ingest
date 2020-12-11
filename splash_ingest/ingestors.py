@@ -296,18 +296,17 @@ def _log_and_auto_contrast(data):
 
 
 class _ImageWithCustomScaling(auto_plot_builders._ShimmedImage):
-    ...
 
-    # def _transform(self, run, field):
-    #     # I am not 100% sure this is the best language feature to use for injecting
-    #     # a custom transform but otherwise reusing the rest of the logic in Images.
-    #     # That's why this method is currently private. This will either become
-    #     # public or we'll choose a different mechanism. - Dan Allan, Dec 2020
+    def _transform(self, run, field):
+        # I am not 100% sure this is the best language feature to use for injecting
+        # a custom transform but otherwise reusing the rest of the logic in Images.
+        # That's why this method is currently private. This will either become
+        # public or we'll choose a different mechanism. - Dan Allan, Dec 2020
 
-    #     # The base class gives us a 2D image by slicing the middle of any
-    #     # higher dimensions.
-    #     data = super()._transform(run, field)
-    #     return _log_and_auto_contrast(data)
+        # The base class gives us a 2D image by slicing the middle of any
+        # higher dimensions.
+        data = super()._transform(run, field)
+        return _log_and_auto_contrast(data)
 
 
 class SplashAutoImages(auto_plot_builders.AutoImages):

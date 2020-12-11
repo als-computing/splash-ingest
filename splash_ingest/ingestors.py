@@ -1,4 +1,5 @@
 import logging
+import os
 from pathlib import Path
 from typing import List
 
@@ -220,6 +221,7 @@ class MappedHD5Ingestor():
         model = SplashAutoImages()
         model.add_run(bluesky_run)
         view = HeadlessFigures(model.figures)
+        os.makedirs(Path(directory, uid), exist_ok=True)
         filenames = view.export_all(Path(directory, uid), format='png')
         print("WROTE", filenames)
 

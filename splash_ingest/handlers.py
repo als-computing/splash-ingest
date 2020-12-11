@@ -21,3 +21,7 @@ class MultiKeyHDF5DatasetSliceHandler(HDF5DatasetSliceHandlerPureNumpy):
         # print(str(point_number))
         return dask.array.from_array(self._datasets[key])[start:stop][0, :, :] 
         # return self._datasets[key][start:stop][0, :, :]
+
+    def close(self):
+        # Do nothing.
+        pass

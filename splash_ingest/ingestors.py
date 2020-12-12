@@ -46,7 +46,7 @@ class MappedHD5Ingestor():
 
 
     """
-    def __init__(self, mapping: Mapping, file, reference_root_name, auth_session=[], thumbs_root=None):
+    def __init__(self, mapping: Mapping, file, reference_root_name, data_session=[], thumbs_root=None):
         """
 
         Parameters
@@ -66,7 +66,7 @@ class MappedHD5Ingestor():
         self._mapping = mapping
         self._file = file
         self._reference_root_name = reference_root_name
-        self._auth_session = auth_session
+        self._data_session = data_session
         self._thumbs_root = thumbs_root
         self._issues = []
 
@@ -99,7 +99,7 @@ class MappedHD5Ingestor():
         run_bundle = event_model.compose_run(metadata=metadata)
         start_doc = run_bundle.start_doc
         start_doc['projections'] = self._mapping.projections
-        start_doc['auth_session'] = self._auth_session
+        start_doc['data_session'] = self._data_session
         yield 'start', start_doc
 
         hd5_resource = run_bundle.compose_resource(

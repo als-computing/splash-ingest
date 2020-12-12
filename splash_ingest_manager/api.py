@@ -86,7 +86,7 @@ async def get_api_key_from_request(
 class CreateJobRequest(BaseModel):
     file_path: str = Field(description="path to where file to ingest is located")
     mapping_name: str = Field(description="mapping name, used to find mapping file in database")
-    auth_session: List[str] = Field(description="adds session authorization filters" +
+    data_session: List[str] = Field(description="adds session authorization filters" +
                                                 "that will be inserted into start document")
 
 
@@ -107,7 +107,7 @@ async def submit_job(request: CreateJobRequest, api_key: APIKey = Depends(get_ap
         client_key.client,
         request.file_path,
         request.mapping_name,
-        request.auth_session)
+        request.data_session)
     return CreateJobResponse(message="success", job_id=job.id)
   
 

@@ -24,7 +24,7 @@ def client():
 def test_create_job_api(client: TestClient):
     key = create_api_client('user1', 'sirius_cybernetics_gpp', INGEST_JOBS_API)
     request = CreateJobRequest(file_path="/foo/bar.hdf5", mapping_name="beamline_mappings",
-                               mapping_version="42", auth_session=['bl42'])
+                               mapping_version="42", data_session=['bl42'])
     response: CreateJobResponse = client.post(url="/api/ingest/jobs", data=request.json(), headers={API_KEY_NAME: key})
     assert response.status_code == 200
     job_id = response.json()['job_id']

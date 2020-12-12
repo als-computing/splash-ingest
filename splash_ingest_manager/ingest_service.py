@@ -83,8 +83,8 @@ def init_ingest_service(db: MongoClient):
     )
 
 
-def create_job(submitter, document_path: str, mapping_id: str, auth_session: List[str]):
-    job = Job(document_path=document_path, auth_session=auth_session)
+def create_job(submitter, document_path: str, mapping_id: str, data_session: List[str]):
+    job = Job(document_path=document_path, data_session=data_session)
     job.id = str(uuid4())
     job.mapping_id = mapping_id
     job.submit_time = datetime.utcnow()
@@ -205,7 +205,7 @@ def ingest(submitter: str, job: Job, thumbs_root=None) -> str:
             logger.info(f"mapping found for {job}")  
         mapping = mapping_with_revision
         file = h5py.File(job.document_path, "r")
-        ingestor = MappedHD5Ingestor(mapping, file, 'mapping_ingestor', job.auth_session, thumbs_root=thumbs_root)
+        ingestor = MappedHD5Ingestor(mapping, file, 'mapping_ingestor', job.data_session, thumbs_root=thumbs_root)
         start_uid = None
         for name, document in ingestor.generate_docstream():
             if name == 'start':

@@ -21,9 +21,3 @@ class MultiKeyHDF5DatasetSliceHandler(HDF5DatasetSliceHandlerPureNumpy):
         # print(str(point_number))
         return dask.array.from_array(self._datasets[key])[start:stop][0, :, :] 
         # return self._datasets[key][start:stop][0, :, :]
-
-    def __del__(self):
-        # Explicitly do NOT close on __del__.
-        # This will be fixed upstream in the base class (in PR
-        # bluesky/area-detector-handlers#25) but for now we'll override it here.
-        pass

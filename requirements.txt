@@ -1,6 +1,6 @@
 Pillow
 area_detector_handlers >=0.0.8
-bluesky-widgets
+bluesky-widgets >=0.0.5
 event_model
 h5py
 numpy

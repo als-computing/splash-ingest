@@ -8,7 +8,8 @@ import numpy as np
 from PIL import Image, ImageOps
 
 from bluesky_live.bluesky_run import BlueskyRun, DocumentCache
-from bluesky_widgets.models import auto_plot_builders
+from bluesky_widgets.models.auto_plot_builders import AutoPlotter
+from bluesky_widgets.models.plot_builders import Images
 from bluesky_widgets.headless.figures import HeadlessFigures
 
 from .model import (
@@ -218,12 +219,11 @@ class MappedHD5Ingestor():
             logger.info(f" run: {start_doc['uid']} had issues {str(self._issues)}")
 
     def _build_thumbnail(self, uid, directory, bluesky_run):
-        model = SplashAutoImages()
+        model = AutoThumbnailModel()
         model.add_run(bluesky_run)
         view = HeadlessFigures(model.figures)
         os.makedirs(Path(directory, uid), exist_ok=True)
         filenames = view.export_all(Path(directory, uid), format='png')
-        print("WROTE", filenames)
 
     def _extract_metadata(self):
         metadata = {}
@@ -295,31 +295,36 @@ def _log_and_auto_contrast(data):
     return np.asarray(auto_contrast_image)
 
 
-class _ImageWithCustomScaling(auto_plot_builders._ShimmedImage):
+class AutoThumbnailModel(AutoPlotter):
 
-    def _transform(self, run, field):
-        # I am not 100% sure this is the best language feature to use for injecting
-        # a custom transform but otherwise reusing the rest of the logic in Images.
-        # That's why this method is currently private. This will either become
-        # public or we'll choose a different mechanism. - Dan Allan, Dec 2020
+    def handle_new_stream(self, run, stream_name):
+        # Find the first image and show it, auto-scaled.
+        ds = run[stream_name].to_dask()
+        for field in ds:
+            if 2 <= ds[field].ndim <= 3:
+                # The Images object builds an abstract representation of a
+                # figure, which we can feed to multiple views--- for example,
+                # rendering PNGs (current use case) and JSON blobs for
+                # interactive client-side graphics (planned).
 
-        # The base class gives us a 2D image by slicing the middle of any
-        # higher dimensions.
-        data = super()._transform(run, field)
-        return _log_and_auto_contrast(data)
-
-
-class SplashAutoImages(auto_plot_builders.AutoImages):
-    """
-    A plot builder
-
-    Reuse `Images` plot builder but wrap it in particular logic for scaling.
-    Also reuse AutoImages' heuristic for identifying images in a Run.
-    """
-
-    @property
-    def _plot_builder(self):
-        return _ImageWithCustomScaling
+                # TODO It would be sensible for Images to support
+                # "auto-constrast" as a first-class concept, separate from
+                # general-purpose extract/transform logic. See
+                # https://github.com/bluesky/bluesky-widgets/issues/88
+				# If/when that is done, the invocation below can be simplfied.
+				# At minimum, we should circle back here to adjust the model's
+				# transfer function limits and scaling, rather than distorting
+				# the values in the data.
+                images = Images(
+                    field=lambda run: _log_and_auto_contrast(run[stream_name][field]),
+                    needs_streams=(stream_name,))
+                images.add_run(run)
+                # Make this visible to the view.
+                self.figures.append(images.figure)
+                # Track it to support *removal* of runs...probably not
+                # necessary here at all, but let's do it anyway for "best
+                # practice" / future-proofing.
+                self.plot_builders.append(images)
 
 
 from ._version import get_versions  # noqa: E402

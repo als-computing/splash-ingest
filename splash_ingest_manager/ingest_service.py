@@ -148,7 +148,7 @@ def poll_for_new_jobs(sleep_interval=5, thumbs_root=None):
         try:
             job_list = find_unstarted_jobs()
             num_pending = len(job_list)
-            logger.info(f"jobs pending: {num_pending}")
+            # logger.info(f"jobs pending: {num_pending}")
             if len(job_list) == 0:
                 time.sleep(sleep_interval)
             else:

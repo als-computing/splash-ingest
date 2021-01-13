@@ -19,7 +19,7 @@ logger = logging.getLogger('splash_ingest')
 
 def init_logging():
     ch = logging.StreamHandler()
-    ch.setLevel(logging.INFO)
+    ch.setLevel(SPLASH_LOG_LEVEL)
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     ch.setFormatter(formatter)
 

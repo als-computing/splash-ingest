@@ -95,18 +95,26 @@ class MappedHD5Ingestor():
         name: str, doc: dict
             name of the document (run_start, reference, event, etc.) and the document itself
         """
+        logger.info(f"Beginning ingestion for {self._file} using mapping {self._mapping.name}"
+                    " for data_session {self._data_session}")
         metadata = self._extract_metadata()
+        if logger.isEnabledFor(logging.DEBUG):
+            keys = metadata.keys()
+            logger.debug(f"Metdata keys : {list(keys)}")
         run_bundle = event_model.compose_run(metadata=metadata)
         start_doc = run_bundle.start_doc
         start_doc['projections'] = self._mapping.projections
         start_doc['data_session'] = self._data_session
         yield 'start', start_doc
-
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug(f"run: {start_doc['uid']} Start doc created")
         hd5_resource = run_bundle.compose_resource(
             spec=self._mapping.resource_spec,
             root=self._reference_root_name,
             resource_path=self._file.filename,  # need to calculate a relative path
             resource_kwargs={})
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug(f"run: {start_doc['uid']} resource doc created uid: {hd5_resource.resource_doc['uid']}")
         yield 'resource', hd5_resource.resource_doc
 
         thumbnail_created = False  # for now, we'll just created one thumbnail per run, first 2d image we find
@@ -114,6 +122,8 @@ class MappedHD5Ingestor():
         stream_mappings: StreamMapping = self._mapping.stream_mappings
         if stream_mappings is not None:
             for stream_name in stream_mappings.keys():
+                if logger.isEnabledFor(logging.DEBUG):
+                    logger.debug(f"run: {start_doc['uid']} Creating stream: {stream_name}")
                 stream_timestamp_field = stream_mappings[stream_name].time_stamp
                 mapping = stream_mappings[stream_name]
 
@@ -121,6 +131,9 @@ class MappedHD5Ingestor():
                 stream_bundle = run_bundle.compose_descriptor(
                     data_keys=descriptor_keys,
                     name=stream_name)
+                if logger.isEnabledFor(logging.DEBUG):
+                    logger.debug(f"run: {start_doc['uid']} Creating descriptor with "
+                                 f"uid: {stream_bundle.descriptor_doc['uid']}")
                 yield 'descriptor', stream_bundle.descriptor_doc
                 num_events = 0
                 try:
@@ -130,15 +143,18 @@ class MappedHD5Ingestor():
                 if num_events == 0:  # test this
                     continue
 
+                logger.info(f" run: {start_doc['uid']} expecting {str(num_events)} events")
                 # produce documents for each event (event and datum)
                 for x in range(0, num_events):
                     try:
                         time_stamp_dataset = self._file[stream_timestamp_field][()]
                     except Exception as e:
-                        self._issues.append(f"Error fetching timestamp for {stream_name} slice: {str(x)} - {str(e.args[0])}")
+                        self._issues.append(f"run: {start_doc['uid']} Error fetching timestamp for {stream_name}"
+                                            f"slice: {str(x)} - {str(e.args[0])}")
                         break
                     if time_stamp_dataset is None or len(time_stamp_dataset) == 0:
-                        self._issues.append(f"Missing timestamp for {stream_name} slice: {str(x)}")
+                        self._issues.append(f"run: {start_doc['uid']} Missing timestamp for"
+                                            f"{stream_name} slice: {str(x)}")
                         break
                     event_data = {}
                     event_timestamps = {}
@@ -155,11 +171,13 @@ class MappedHD5Ingestor():
                         event_timestamps[encoded_key] = time_stamp_dataset[x]
                         if field.external:
                             if logger.isEnabledFor(logging.DEBUG):
-                                logger.debug(f'event for {field.external} inserted as datum')
+                                logger.debug(f"run: {start_doc['uid']} event for {field.external} inserted as datum")
                             # field's data provided in datum
                             datum = hd5_resource.compose_datum(datum_kwargs={
                                     "key": encoded_key,
                                     "point_number": x})  # need kwargs for HDF5 datum
+                            if logger.isEnabledFor(logging.DEBUG):
+                                logger.debug(f"run: {start_doc['uid']} Creating datum with uid: {datum['datum_uid']}")
                             yield 'datum', datum
                             event_data[encoded_key] = datum['datum_id']
                             filled_fields[encoded_key] = False
@@ -168,15 +186,23 @@ class MappedHD5Ingestor():
                             if logger.isEnabledFor(logging.INFO):
                                 logger.info(f'event for {field.external} inserted in event')
                             event_data[encoded_key] = dataset[x]
-                    yield 'event', stream_bundle.compose_event(
+                    
+                    event = stream_bundle.compose_event(
                         data=event_data,
                         filled=filled_fields,
                         seq_num=x,
                         timestamps=event_timestamps
                     )
+                    if logger.isEnabledFor(logging.DEBUG):
+                        logger.debug(f"run: {start_doc['uid']} Creating event with uid: {event['uid']}")
+                    yield 'event', event
 
         stop_doc = run_bundle.compose_stop()
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug(f"run: {start_doc['uid']} stop doc {str(stop_doc)}")
         yield 'stop', stop_doc
+        if len(self._issues) > 0:
+            logger.info(f" run: {start_doc['uid']} had issues {str(self._issues)}")
 
     def _build_thumbnail(self, uid, directory, data):
         middle_image = round(data.shape[0] / 2)

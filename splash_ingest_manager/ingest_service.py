@@ -16,7 +16,7 @@ from suitcase.mongo_normalized import Serializer
 
 from splash_ingest.model import Mapping
 from splash_ingest.ingestors import MappedHD5Ingestor
-from .model import Job, JobStatus, StatusItem, RevisionStamp
+from .model import Job, JobStatus, StatusItem
 
 logger = logging.getLogger('splash_ingest.ingest_service')
 # these context objects help us inject dependencies, useful
@@ -128,16 +128,13 @@ def find_mapping(submitter, mapping_id: str) -> Mapping:
     mapping_dict = service_context.ingest_mappings.find_one({"name": mapping_id})
     if mapping_dict is None:
         return None
-    revision = mapping_dict.pop('revision')
     return Mapping(**mapping_dict)
 
 
 def create_mapping(submitter, mapping: Mapping):
     id = str(uuid4())
-    revision = RevisionStamp(user=submitter, time=datetime.utcnow(), version_id=id)
     insert_dict = mapping.dict()
     insert_dict['id'] = id
-    insert_dict['revision'] = revision.dict()
     service_context.ingest_mappings.insert_one(insert_dict)
     return id
 
@@ -147,7 +144,7 @@ def poll_for_new_jobs(sleep_interval=5, thumbs_root=None):
     while True:
         try:
             job_list = find_unstarted_jobs()
-            num_pending = len(job_list)
+            # num_pending = len(job_list)
             # logger.info(f"jobs pending: {num_pending}")
             if len(job_list) == 0:
                 time.sleep(sleep_interval)
@@ -192,9 +189,9 @@ def ingest(submitter: str, job: Job, thumbs_root=None) -> str:
                         submitter=job.submitter,
                         status=JobStatus.running,
                         log='Starting job'))
-        mapping_with_revision = find_mapping(submitter, job.mapping_id)
+        mapping = find_mapping(submitter, job.mapping_id)
 
-        if mapping_with_revision is None:
+        if mapping is None:
             log = f"no mapping found for {job.id} - {job.mapping_id.name} {job.mapping_id.version}"
             logger.info(log)
             set_job_status(job.id, StatusItem(time=datetime.utcnow(),
@@ -203,7 +200,6 @@ def ingest(submitter: str, job: Job, thumbs_root=None) -> str:
 
         if logger.isEnabledFor(logging.INFO):
             logger.info(f"mapping found for {job}")  
-        mapping = mapping_with_revision
         file = h5py.File(job.document_path, "r")
         ingestor = MappedHD5Ingestor(mapping, file, 'mapping_ingestor', job.data_session, thumbs_root=thumbs_root)
         start_uid = None

@@ -4,13 +4,6 @@ from typing import Optional, List
 
 from pydantic import BaseModel
 
-
-class RevisionStamp(BaseModel):
-    user: str
-    time: datetime
-    version_id: str
-
-
 class JobStatus(str, Enum):
     submitted = 'submitted'
     running = 'running'

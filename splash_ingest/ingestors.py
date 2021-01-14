@@ -177,7 +177,7 @@ class MappedHD5Ingestor():
                                     "key": encoded_key,
                                     "point_number": x})  # need kwargs for HDF5 datum
                             if logger.isEnabledFor(logging.DEBUG):
-                                logger.debug(f"run: {start_doc['uid']} Creating datum with uid: {datum['datum_uid']}")
+                                logger.debug(f"run: {start_doc['uid']} Creating datum with uid: {datum['datum_id']}")
                             yield 'datum', datum
                             event_data[encoded_key] = datum['datum_id']
                             filled_fields[encoded_key] = False

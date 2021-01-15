@@ -289,7 +289,9 @@ def _log_and_auto_contrast(data):
     log_image = data - np.min(data) + 1.001
     log_image = np.log(log_image)
     log_image = 205*log_image/(np.max(log_image))
-    auto_contrast_image = Image.fromarray(log_image.astype('uint8'))
+    # Coerce this into a numpy array. (It may be dask.array or other array-like.)
+    arr = np.asarray(log_image.astype('uint8'))
+    auto_contrast_image = Image.fromarray(arr)
     auto_contrast_image = ImageOps.autocontrast(
                             auto_contrast_image, cutoff=0.1)
     return np.asarray(auto_contrast_image)

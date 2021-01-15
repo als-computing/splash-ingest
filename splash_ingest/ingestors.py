@@ -323,7 +323,7 @@ class AutoThumbnailModel(AutoPlotter):
 				# transfer function limits and scaling, rather than distorting
 				# the values in the data.
                 images = Images(
-                    field=lambda run: _log_and_auto_contrast(run[stream_name][field]),
+                    field=lambda run: _log_and_auto_contrast(run[stream_name].to_dask()[field]),
                     needs_streams=(stream_name,))
                 images.add_run(run)
                 # Make this visible to the view.

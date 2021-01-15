@@ -286,6 +286,11 @@ def calc_num_events(mapping_fields: List[StreamMappingField], file):
 
 
 def _log_and_auto_contrast(data):
+    # If the data is more than 2D, take the middle slice from the leading
+    # axis until there are only two axes.
+    while data.ndim > 2:
+        middle = data.shape[0] // 2
+        data = data[middle]
     log_image = data - np.min(data) + 1.001
     log_image = np.log(log_image)
     log_image = 205*log_image/(np.max(log_image))

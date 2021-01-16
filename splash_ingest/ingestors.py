@@ -170,14 +170,14 @@ class MappedHD5Ingestor():
                         encoded_key = encode_key(field.field)
                         event_timestamps[encoded_key] = time_stamp_dataset[x]
                         if field.external:
-                            if logger.isEnabledFor(logging.DEBUG):
-                                logger.debug(f"run: {start_doc['uid']} event for {field.external} inserted as datum")
+                            # if logger.isEnabledFor(logging.DEBUG):
+                            #     logger.debug(f"run: {start_doc['uid']} event for {field.external} inserted as datum")
                             # field's data provided in datum
                             datum = hd5_resource.compose_datum(datum_kwargs={
                                     "key": encoded_key,
                                     "point_number": x})  # need kwargs for HDF5 datum
-                            if logger.isEnabledFor(logging.DEBUG):
-                                logger.debug(f"run: {start_doc['uid']} Creating datum with uid: {datum['datum_uid']}")
+                            # if logger.isEnabledFor(logging.DEBUG):
+                            #     logger.debug(f"run: {start_doc['uid']} Creating datum with uid: {datum['datum_uid']}")
                             yield 'datum', datum
                             event_data[encoded_key] = datum['datum_id']
                             filled_fields[encoded_key] = False

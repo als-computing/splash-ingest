@@ -4,7 +4,7 @@ REGISTRY		:= registry.spin.nersc.gov
 PROJECT 		:= dmcreyno
 REGISTRY_NAME	:= ${REGISTRY}/${PROJECT}/${IMG}
 
-NAME_WEB_WEB_SVC  	:= splash_ingest_webservice
+NAME_WEB_SVC  	:= splash_ingest_webservice
 IMG_WEB_SVC    		:= ${NAME_WEB_SVC}:${TAG}
 REGISTRY_WEB_SVC	:= ${REGISTRY}/${PROJECT}/${NAME_WEB_SVC}:${TAG}
 

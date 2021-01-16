@@ -46,7 +46,7 @@ class MappedHD5Ingestor():
 
 
     """
-    def __init__(self, mapping: Mapping, file, reference_root_name, data_session=[], thumbs_root=None):
+    def __init__(self, mapping: Mapping, file, reference_root_name, data_groups=[], thumbs_root=None):
         """
 
         Parameters
@@ -66,7 +66,7 @@ class MappedHD5Ingestor():
         self._mapping = mapping
         self._file = file
         self._reference_root_name = reference_root_name
-        self._data_session = data_session
+        self._data_groups = data_groups
         self._thumbs_root = thumbs_root
         self._issues = []
 
@@ -96,7 +96,7 @@ class MappedHD5Ingestor():
             name of the document (run_start, reference, event, etc.) and the document itself
         """
         logger.info(f"Beginning ingestion for {self._file} using mapping {self._mapping.name}"
-                    " for data_session {self._data_session}")
+                    " for data_groups {self._data_groups}")
         metadata = self._extract_metadata()
         if logger.isEnabledFor(logging.DEBUG):
             keys = metadata.keys()
@@ -104,7 +104,7 @@ class MappedHD5Ingestor():
         run_bundle = event_model.compose_run(metadata=metadata)
         start_doc = run_bundle.start_doc
         start_doc['projections'] = self._mapping.projections
-        start_doc['data_session'] = self._data_session
+        start_doc['data_groups'] = self._data_groups
         yield 'start', start_doc
         if logger.isEnabledFor(logging.DEBUG):
             logger.debug(f"run: {start_doc['uid']} Start doc created")
@@ -177,7 +177,7 @@ class MappedHD5Ingestor():
                                     "key": encoded_key,
                                     "point_number": x})  # need kwargs for HDF5 datum
                             # if logger.isEnabledFor(logging.DEBUG):
-                            #     logger.debug(f"run: {start_doc['uid']} Creating datum with uid: {datum['datum_uid']}")
+                            #     logger.debug(f"run: {start_doc['uid']} Creating datum with uid: {datum['datum_id']}")
                             yield 'datum', datum
                             event_data[encoded_key] = datum['datum_id']
                             filled_fields[encoded_key] = False

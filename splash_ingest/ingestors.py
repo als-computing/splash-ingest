@@ -270,21 +270,17 @@ class MappedHD5Ingestor():
         configuration_mapping : ConfigurationMapping
             [description]
         """
-        field_data = {}
+        field_data = {
+            "data": {},
+            "timestamps": {},
+            "data_keys": {}
+        }
         confguration = {configuration_mapping['device']: field_data}
         
         for conf_mapping in configuration_mappings:
-            mapping_fields = conf_mapping['mapping_fields']
-            data = {}
-            timestamps = {}
-            data_keys = {}
             for field in mapping_fields:
+                field_data[conf_mapping.device] = conf_mapping["field"]
                 
-            device_configuration[device_config.field].append({
-                "data": data,
-                "timespamps": sometimstamps,
-                "data_keys": somedatakeys
-            })
 
         return configuration
 

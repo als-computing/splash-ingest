@@ -2,20 +2,24 @@ from pydantic import BaseModel, Field
 from typing import Dict, List, Optional
 
 
-class MDMapping(BaseModel):
+class MappingField(BaseModel):
     field: str = Field(title='name of the field that is placed in the start document')
     description: Optional[str] = Field(title='description ')
 
 
-class StreamMappingField(BaseModel):
-    field: str = Field(title='name of the field')
+class ConfigurationMapping(BaseModel):
+    device: str
+    fields: List[MappingField]
+
+
+class StreamMappingField(MappingField):
     external: Optional[bool] = Field(title="Indicates whether field will be represented in the event directly or from an external file")
-    description: Optional[str] = Field(title="description of this field")
 
 
 class StreamMapping(BaseModel):
-    mapping_fields: List[StreamMappingField]
+    mapping_fields: List[MappingField]
     time_stamp: str = Field(title='time_stamp field', description='field to use to get time stamp values')
+    conf_mappings: Optional[List[ConfigurationMapping]] = Field(title="event descriptor confguration")
 
 
 class Mapping(BaseModel):
@@ -23,6 +27,6 @@ class Mapping(BaseModel):
     description: str = Field(title='Mapping description', description='Description of this mapping')
     resource_spec: str = Field(title='Resource spec', description='databroker.handler spec for the resource document' +
                                                                   'produced by the ingestor. e.g. HDF, TIFFStack, etc.')
-    md_mappings: Optional[List[MDMapping]]
+    md_mappings: Optional[List[MappingField]]
     stream_mappings: Optional[Dict[str, StreamMapping]]
     projections: Optional[List[Dict]]

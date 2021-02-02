@@ -7,7 +7,9 @@ import numpy as np
 from PIL import Image, ImageOps
 
 from .model import (
+    ConfigurationMapping,
     Mapping,
+    MappingField,
     StreamMapping,
     StreamMappingField
 )
@@ -128,6 +130,7 @@ class MappedHD5Ingestor():
                 mapping = stream_mappings[stream_name]
 
                 descriptor_keys = self._extract_stream_descriptor_keys(mapping.mapping_fields)
+                configuration = self._extract_stream_configuration(mapping.configuration)
                 stream_bundle = run_bundle.compose_descriptor(
                     data_keys=descriptor_keys,
                     name=stream_name)
@@ -257,6 +260,33 @@ class MappedHD5Ingestor():
             encoded_key = encode_key(mapping_field.field)
             descriptors[encoded_key] = descriptor
         return descriptors
+
+
+    def _extract_stream_configuration(self, configuration_mapping: ConfigurationMapping):
+        """Builds a single configuration object for the streams's event descriptor.
+
+        Parameters
+        ----------
+        configuration_mapping : ConfigurationMapping
+            [description]
+        """
+        field_data = {}
+        confguration = {configuration_mapping['device']: field_data}
+        
+        for conf_mapping in configuration_mappings:
+            mapping_fields = conf_mapping['mapping_fields']
+            data = {}
+            timestamps = {}
+            data_keys = {}
+            for field in mapping_fields:
+                
+            device_configuration[device_config.field].append({
+                "data": data,
+                "timespamps": sometimstamps,
+                "data_keys": somedatakeys
+            })
+
+        return configuration
 
 
 def encode_key(key):

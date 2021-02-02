@@ -17,7 +17,7 @@ class StreamMappingField(MappingField):
 
 
 class StreamMapping(BaseModel):
-    mapping_fields: List[MappingField]
+    fields: List[MappingField]
     time_stamp: str = Field(title='time_stamp field', description='field to use to get time stamp values')
     conf_mappings: Optional[List[ConfigurationMapping]] = Field(title="event descriptor confguration")
 

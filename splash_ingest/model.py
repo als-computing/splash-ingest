@@ -2,6 +2,8 @@ from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
+SCHEMA_VERSION = 1
+
 
 class MappingField(BaseModel):
     field: str = Field(title='name of the field that is placed in the start document')
@@ -24,6 +26,7 @@ class StreamMapping(BaseModel):
 
 
 class Mapping(BaseModel):
+    schema_version: int = SCHEMA_VERSION
     name: str = Field(title='Mapping name', description='Name of this mapping')
     description: str = Field(title='Mapping description', description='Description of this mapping')
     resource_spec: str = Field(title='Resource spec', description='databroker.handler spec for the resource document' +

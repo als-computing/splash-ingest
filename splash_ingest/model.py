@@ -1,5 +1,6 @@
-from pydantic import BaseModel, Field
 from typing import Dict, List, Optional
+
+from pydantic import BaseModel, Field
 
 
 class MappingField(BaseModel):
@@ -9,15 +10,15 @@ class MappingField(BaseModel):
 
 class ConfigurationMapping(BaseModel):
     device: str
-    fields: List[MappingField]
+    mapping_fields: List[MappingField]
 
 
 class StreamMappingField(MappingField):
-    external: Optional[bool] = Field(title="Indicates whether field will be represented in the event directly or from an external file")
+    external: Optional[bool] = Field(default=False, title="Indicates whether field will be represented in the event directly or from an external file")
 
 
 class StreamMapping(BaseModel):
-    fields: List[MappingField]
+    mapping_fields: List[StreamMappingField]
     time_stamp: str = Field(title='time_stamp field', description='field to use to get time stamp values')
     conf_mappings: Optional[List[ConfigurationMapping]] = Field(title="event descriptor confguration")
 

@@ -130,10 +130,12 @@ class MappedHD5Ingestor():
                 mapping = stream_mappings[stream_name]
 
                 descriptor_keys = self._extract_stream_descriptor_keys(mapping.mapping_fields)
-                configuration = self._extract_stream_configuration(mapping.configuration)
+                configuration = self._extract_stream_configuration(mapping.conf_mappings)
                 stream_bundle = run_bundle.compose_descriptor(
                     data_keys=descriptor_keys,
-                    name=stream_name)
+                    name=stream_name,
+                    configuration=configuration
+                    )
                 if logger.isEnabledFor(logging.DEBUG):
                     logger.debug(f"run: {start_doc['uid']} Creating descriptor with "
                                  f"uid: {stream_bundle.descriptor_doc['uid']}")
@@ -262,27 +264,47 @@ class MappedHD5Ingestor():
         return descriptors
 
 
-    def _extract_stream_configuration(self, configuration_mapping: ConfigurationMapping):
+    def _extract_stream_configuration(self, configuration_mapping: ConfigurationMapping, ):
         """Builds a single configuration object for the streams's event descriptor.
-
+            https://blueskyproject.io/event-model/event-descriptors.html#configuration
         Parameters
         ----------
         configuration_mapping : ConfigurationMapping
             [description]
         """
-        field_data = {
-            "data": {},
-            "timestamps": {},
-            "data_keys": {}
-        }
-        confguration = {configuration_mapping['device']: field_data}
-        
-        for conf_mapping in configuration_mappings:
-            for field in mapping_fields:
-                field_data[conf_mapping.device] = conf_mapping["field"]
-                
+     
+        confguration = {}
+        if configuration_mapping is None:
+            return confguration
 
-        return configuration
+        for conf_mapping in configuration_mapping:
+            device_config = {
+                "data": {},
+                "timestamps": {},
+                "data_keys": {}
+            }
+
+            for field in conf_mapping.mapping_fields:
+                encoded_key = encode_key(field.field)
+                try:
+                    hdf5_dataset = self._file[field.field]
+                except Exception as e:
+                    self._issues.append(f"Error finding configuraiton mapping {field.field} - {str(e.args)}")
+                    continue
+                units = hdf5_dataset.attrs.get('units')
+                if units is not None:
+                    units = units.decode()
+                data_keys = dict(
+                        dtype='number',
+                        source='file',
+                        shape=hdf5_dataset.shape[1::],
+                        units=units)
+                device_config['data'][encoded_key] = hdf5_dataset[()]
+                # device_config['timestamps']['field'] = 
+                device_config['data_keys'][encoded_key] = data_keys
+            confguration[conf_mapping.device] = device_config
+
+        return confguration
 
 
 def encode_key(key):

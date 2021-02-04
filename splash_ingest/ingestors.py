@@ -7,7 +7,9 @@ import numpy as np
 from PIL import Image, ImageOps
 
 from .model import (
+    ConfigurationMapping,
     Mapping,
+    MappingField,
     StreamMapping,
     StreamMappingField
 )
@@ -128,9 +130,12 @@ class MappedHD5Ingestor():
                 mapping = stream_mappings[stream_name]
 
                 descriptor_keys = self._extract_stream_descriptor_keys(mapping.mapping_fields)
+                configuration = self._extract_stream_configuration(mapping.conf_mappings)
                 stream_bundle = run_bundle.compose_descriptor(
                     data_keys=descriptor_keys,
-                    name=stream_name)
+                    name=stream_name,
+                    configuration=configuration
+                    )
                 if logger.isEnabledFor(logging.DEBUG):
                     logger.debug(f"run: {start_doc['uid']} Creating descriptor with "
                                  f"uid: {stream_bundle.descriptor_doc['uid']}")
@@ -163,7 +168,11 @@ class MappedHD5Ingestor():
                     for field in mapping.mapping_fields:
                         # Go through each field in the stream. If field not marked
                         # as external, extract the value. Otherwise create a datum
-                        dataset = self._file[field.field]
+                        try:
+                            dataset = self._file[field.field]
+                        except Exception as e:
+                            self._issues.append(f"Error finding event mapping {field.field}")
+                            continue
                         if not thumbnail_created and self._thumbs_root is not None and len(dataset.shape) == 3:
                             self._build_thumbnail(start_doc['uid'], self._thumbs_root, dataset)
                             thumbnail_created = True
@@ -230,7 +239,7 @@ class MappedHD5Ingestor():
                 data_value = self._file[mapping.field]
                 metadata[encoded_key] = data_value[()].item().decode()
             except Exception as e:
-                self._issues.append(f"Error finding mapping {encoded_key} - {str(e.args)}")
+                self._issues.append(f"Error finding run_start mapping {mapping.field}")
                 continue
         return metadata
 
@@ -241,7 +250,7 @@ class MappedHD5Ingestor():
             try:
                 hdf5_dataset = self._file[mapping_field.field]
             except Exception as e:
-                self._issues.append(f"Error finding mapping {mapping_field} - {str(e.args)}")
+                self._issues.append(f"Error finding stream mapping {mapping_field}")
                 continue
             units = hdf5_dataset.attrs.get('units')
             if units is not None:
@@ -257,6 +266,49 @@ class MappedHD5Ingestor():
             encoded_key = encode_key(mapping_field.field)
             descriptors[encoded_key] = descriptor
         return descriptors
+
+
+    def _extract_stream_configuration(self, configuration_mapping: ConfigurationMapping, ):
+        """Builds a single configuration object for the streams's event descriptor.
+            https://blueskyproject.io/event-model/event-descriptors.html#configuration
+        Parameters
+        ----------
+        configuration_mapping : ConfigurationMapping
+            [description]
+        """
+     
+        confguration = {}
+        if configuration_mapping is None:
+            return confguration
+
+        for conf_mapping in configuration_mapping:
+            device_config = {
+                "data": {},
+                "timestamps": {},
+                "data_keys": {}
+            }
+
+            for field in conf_mapping.mapping_fields:
+                encoded_key = encode_key(field.field)
+                try:
+                    hdf5_dataset = self._file[field.field]
+                except Exception as e:
+                    self._issues.append(f"Error finding event desc configuration mapping {field.field}")
+                    continue
+                units = hdf5_dataset.attrs.get('units')
+                if units is not None:
+                    units = units.decode()
+                data_keys = dict(
+                        dtype='number',
+                        source='file',
+                        shape=hdf5_dataset.shape[1::],
+                        units=units)
+                device_config['data'][encoded_key] = hdf5_dataset[()]
+                # device_config['timestamps']['field'] = 
+                device_config['data_keys'][encoded_key] = data_keys
+            confguration[conf_mapping.device] = device_config
+
+        return confguration
 
 
 def encode_key(key):

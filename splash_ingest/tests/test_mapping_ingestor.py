@@ -4,7 +4,6 @@ from pathlib import Path
 import h5py
 import numpy as np
 import pytest
-import pytz
 
 from databroker.core import SingleRunCache
 from splash_ingest.ingestors import (
@@ -32,9 +31,17 @@ mapping_dict = {
         ],
         "stream_mappings": {
             "primary": {
-                "thumbnail": True,
                 "time_stamp": "/process/acquisition/time_stamp",
-                "mapping_fields": [
+                "conf_mappings": [
+                        {"device": "all",
+                         "mapping_fields": [
+                            {"field": "/measurement/instrument/detector/dark_field_value"},
+                            {"field": "/measurement/instrument/attenuator/setup/filter_y"}
+                        ]
+                    }
+                ],
+                "mapping_fields":
+                [
                     {"field": "/exchange/data", "external": True},
                     {"field": "/process/acquisition/sample_position_x", "description": "tile_xmovedist"}
                 ]
@@ -66,26 +73,22 @@ def test_build_mapping():
 
 @pytest.fixture
 def sample_file(tmp_path):
-    string_dt = h5py.string_dtype(encoding='ascii')
-    local = pytz.timezone("America/Los_Angeles")
     # data = np.empty((num_frames_primary, 5, 5))
     data = np.empty((num_frames_primary, 5, 5))
     data_dark = np.empty((num_frames_darks, 5, 5))
-    primary_timestamps = np.empty((num_frames_primary), dtype=string_dt)
-    dark_timestamps = np.empty((num_frames_darks), dtype=string_dt)
+    primary_timestamps = np.empty((num_frames_primary), dtype='float64')
+    dark_timestamps = np.empty((num_frames_darks), dtype='float64')
     start_time = datetime.datetime.now()
     primary_sample_position_x = []
     for frame_num in range(0, num_frames_primary):
         data[frame_num] = np.random.random_sample((5, 5))
-        timestamp = start_time + datetime.timedelta(0, 1)  # add a second to each
-        primary_timestamps[frame_num] = (str(local.localize(timestamp, is_dst=None)))
+        primary_timestamps[frame_num] = (start_time + datetime.timedelta(0, frame_num)).timestamp()  # add a second for each frame
         primary_sample_position_x.append(float(frame_num))
     start_time = datetime.datetime.now()
     
     for dark_num in range(0, num_frames_darks):
         data_dark[dark_num, :, :] = np.random.random_sample((5, 5))
-        timestamp = start_time + datetime.timedelta(0, 1)  # add a second to each
-        dark_timestamps[dark_num] = (str(local.localize(timestamp, is_dst=None)))
+        dark_timestamps[dark_num] = (start_time + datetime.timedelta(0, num_frames_darks)).timestamp()  # add a second to each
 
     file = h5py.File(tmp_path / 'test.hdf5', 'w')
     file.create_dataset('/measurement/sample/name', data=np.array([b'my sample'], dtype='|S256'))
@@ -94,8 +97,13 @@ def sample_file(tmp_path):
     file.create_dataset('/exchange/data', data=data)
     file.create_dataset('/exchange/dark', data=data_dark)
     file.create_dataset('/process/acquisition/sample_position_x', data=primary_sample_position_x)
-    file.create_dataset('/process/acquisition/time_stamp', data=primary_timestamps, dtype=string_dt)
-    file.create_dataset('/process/acquisition/dark_time_stamp', data=dark_timestamps, dtype=string_dt)
+    file.create_dataset('/process/acquisition/time_stamp', data=primary_timestamps, dtype='float64')
+    file.create_dataset('/process/acquisition/dark_time_stamp', data=dark_timestamps, dtype='float64')
+    
+    # stream configuration fields
+    file.create_dataset('/measurement/instrument/detector/dark_field_value', data=dark_timestamps, dtype='float64')
+    file.create_dataset('/measurement/instrument/attenuator/setup/filter_y', data=dark_timestamps, dtype='float64')
+
     file.close()
     file = h5py.File(tmp_path / 'test.hdf5', 'r')
     yield file
@@ -147,6 +155,8 @@ def test_hdf5_mapped_ingestor(sample_file, tmp_path):
     assert descriptors[0]["name"] == "primary", "first descriptor is primary"
     assert descriptors[1]["name"] == "darks", "second descriptor is darks"
     assert len(descriptors[0]["data_keys"].keys()) == 2, "primary has two data_keys"
+    assert descriptors[0]['configuration'] is not None
+
 
     assert len(result_datums) == num_frames_primary + num_frames_darks
     assert len(result_events) == num_frames_primary + num_frames_darks
@@ -181,7 +191,7 @@ def test_mapped_ingestor_bad_stream_field(sample_file):
     }
     ingestor = MappedHD5Ingestor(Mapping(**mapping_dict_bad_stream_field), sample_file, "test_root")
     list(ingestor.generate_docstream())
-    assert "Error finding mapping" in ingestor.issues[0]
+    assert "Error finding stream mapping" in ingestor.issues[0]
 
 
 def test_mapped_ingestor_bad_metadata_field(sample_file):
@@ -197,7 +207,7 @@ def test_mapped_ingestor_bad_metadata_field(sample_file):
     }
     ingestor = MappedHD5Ingestor(Mapping(**mapping_dict_bad_metadata_field), sample_file, "test_root")
     list(ingestor.generate_docstream())
-    assert "Error finding mapping" in ingestor.issues[0]
+    assert "Error finding run_start mapping" in ingestor.issues[0]
 
 
 def test_calc_num_events(sample_file):

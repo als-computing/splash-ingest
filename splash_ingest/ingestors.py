@@ -168,7 +168,11 @@ class MappedHD5Ingestor():
                     for field in mapping.mapping_fields:
                         # Go through each field in the stream. If field not marked
                         # as external, extract the value. Otherwise create a datum
-                        dataset = self._file[field.field]
+                        try:
+                            dataset = self._file[field.field]
+                        except Exception as e:
+                            self._issues.append(f"Error finding event mapping {field.field}")
+                            continue
                         if not thumbnail_created and self._thumbs_root is not None and len(dataset.shape) == 3:
                             self._build_thumbnail(start_doc['uid'], self._thumbs_root, dataset)
                             thumbnail_created = True
@@ -235,7 +239,7 @@ class MappedHD5Ingestor():
                 data_value = self._file[mapping.field]
                 metadata[encoded_key] = data_value[()].item().decode()
             except Exception as e:
-                self._issues.append(f"Error finding mapping {encoded_key} - {str(e.args)}")
+                self._issues.append(f"Error finding run_start mapping {mapping.field}")
                 continue
         return metadata
 
@@ -246,7 +250,7 @@ class MappedHD5Ingestor():
             try:
                 hdf5_dataset = self._file[mapping_field.field]
             except Exception as e:
-                self._issues.append(f"Error finding mapping {mapping_field} - {str(e.args)}")
+                self._issues.append(f"Error finding stream mapping {mapping_field}")
                 continue
             units = hdf5_dataset.attrs.get('units')
             if units is not None:
@@ -289,7 +293,7 @@ class MappedHD5Ingestor():
                 try:
                     hdf5_dataset = self._file[field.field]
                 except Exception as e:
-                    self._issues.append(f"Error finding configuraiton mapping {field.field} - {str(e.args)}")
+                    self._issues.append(f"Error finding event desc configuration mapping {field.field}")
                     continue
                 units = hdf5_dataset.attrs.get('units')
                 if units is not None:

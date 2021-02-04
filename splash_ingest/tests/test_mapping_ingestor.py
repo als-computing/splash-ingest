@@ -191,7 +191,7 @@ def test_mapped_ingestor_bad_stream_field(sample_file):
     }
     ingestor = MappedHD5Ingestor(Mapping(**mapping_dict_bad_stream_field), sample_file, "test_root")
     list(ingestor.generate_docstream())
-    assert "Error finding mapping" in ingestor.issues[0]
+    assert "Error finding stream mapping" in ingestor.issues[0]
 
 
 def test_mapped_ingestor_bad_metadata_field(sample_file):
@@ -207,7 +207,7 @@ def test_mapped_ingestor_bad_metadata_field(sample_file):
     }
     ingestor = MappedHD5Ingestor(Mapping(**mapping_dict_bad_metadata_field), sample_file, "test_root")
     list(ingestor.generate_docstream())
-    assert "Error finding mapping" in ingestor.issues[0]
+    assert "Error finding run_start mapping" in ingestor.issues[0]
 
 
 def test_calc_num_events(sample_file):

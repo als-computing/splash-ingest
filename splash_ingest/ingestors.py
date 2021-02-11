@@ -237,7 +237,7 @@ class MappedHD5Ingestor():
             encoded_key = encode_key(mapping.field)
             try:
                 data_value = self._file[mapping.field]
-                metadata[encoded_key] = data_value[()].item().decode()
+                metadata[encoded_key] = data_value[()].decode("utf-8")
             except Exception as e:
                 self._issues.append(f"Error finding run_start mapping {mapping.field}")
                 continue

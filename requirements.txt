@@ -1,7 +1,7 @@
 Pillow
 area_detector_handlers
 event_model
-h5py
+h5py>=3
 numpy
 passlib
 pydantic

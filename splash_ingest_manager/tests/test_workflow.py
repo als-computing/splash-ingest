@@ -94,7 +94,7 @@ def test_query_unstarted_jobs():
 @pytest.fixture
 def sample_file(tmp_path):
     file = h5py.File(tmp_path / 'test.hdf5', 'w')
-    file.create_dataset('/measurement/sample/name', data=np.array([b'my sample'], dtype='|S256'))
+    file.create_dataset('/measurement/sample/name', data=b'my sample', dtype='|S256')
     file.close()
     file = h5py.File(tmp_path / 'test.hdf5', 'r')
     yield file

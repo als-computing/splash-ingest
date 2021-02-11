@@ -91,9 +91,9 @@ def sample_file(tmp_path):
         dark_timestamps[dark_num] = (start_time + datetime.timedelta(0, num_frames_darks)).timestamp()  # add a second to each
 
     file = h5py.File(tmp_path / 'test.hdf5', 'w')
-    file.create_dataset('/measurement/sample/name', data=np.array([b'my sample'], dtype='|S256'))
-    file.create_dataset('/measurement/instrument/name', data=np.array([b'my station'], dtype='|S256'))
-    file.create_dataset('/measurement/instrument/source/beamline', data=np.array([b'my beam'], dtype='|S256'))
+    file.create_dataset('/measurement/sample/name', data=b'my sample', dtype='|S256')
+    file.create_dataset('/measurement/instrument/name', data=b'my station', dtype='|S256')
+    file.create_dataset('/measurement/instrument/source/beamline', data=b'my beam', dtype='|S256')
     file.create_dataset('/exchange/data', data=data)
     file.create_dataset('/exchange/dark', data=data_dark)
     file.create_dataset('/process/acquisition/sample_position_x', data=primary_sample_position_x)
@@ -157,7 +157,6 @@ def test_hdf5_mapped_ingestor(sample_file, tmp_path):
     assert len(descriptors[0]["data_keys"].keys()) == 2, "primary has two data_keys"
     assert descriptors[0]['configuration'] is not None
 
-
     assert len(result_datums) == num_frames_primary + num_frames_darks
     assert len(result_events) == num_frames_primary + num_frames_darks
 
@@ -167,7 +166,6 @@ def test_hdf5_mapped_ingestor(sample_file, tmp_path):
     dir = Path(tmp_path)
     file = run_uid + ".png"
     assert Path(dir / file).exists()
-
 
 
 def test_mapped_ingestor_bad_stream_field(sample_file):

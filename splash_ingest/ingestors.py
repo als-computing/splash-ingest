@@ -303,13 +303,20 @@ class MappedHD5Ingestor():
                         source='file',
                         shape=hdf5_dataset.shape[1::],
                         units=units)
-                device_config['data'][encoded_key] = hdf5_dataset[()]
+                
+                device_config['data'][encoded_key] = get_dataset_value(hdf5_dataset)
                 # device_config['timestamps']['field'] = 
                 device_config['data_keys'][encoded_key] = data_keys
             confguration[conf_mapping.device] = device_config
 
         return confguration
 
+
+def get_dataset_value(data_set):
+    if "S" in data_set.dtype.str:
+        return data_set[()].decode("utf-8")
+    else:
+        return data_set[()]
 
 def encode_key(key):
     return key.replace("/", ":")

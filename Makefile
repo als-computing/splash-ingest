@@ -1,7 +1,7 @@
 
 TAG    			:= $$(git describe --tags)
-REGISTRY		:= registry.spin.nersc.gov
-PROJECT 		:= dmcreyno
+REGISTRY		:= registry.nersc.gov
+PROJECT 		:= als
 REGISTRY_NAME	:= ${REGISTRY}/${PROJECT}/${IMG}
 
 NAME_WEB_SVC  	:= splash_ingest_webservice

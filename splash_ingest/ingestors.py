@@ -70,7 +70,12 @@ class MappedHD5Ingestor():
         self._reference_root_name = reference_root_name
         self._data_groups = data_groups
         self._thumbs_root = thumbs_root
+        self._thumbnails: [Path] = []
         self._issues = []
+
+    @property
+    def thumbnails(self):
+        return self._thumbnails
 
     @property
     def issues(self):
@@ -174,7 +179,8 @@ class MappedHD5Ingestor():
                             self._issues.append(f"Error finding event mapping {field.field}")
                             continue
                         if not thumbnail_created and self._thumbs_root is not None and len(dataset.shape) == 3:
-                            self._build_thumbnail(start_doc['uid'], self._thumbs_root, dataset)
+                            file = self._build_thumbnail(start_doc['uid'], self._thumbs_root, dataset)
+                            self._thumbnails.append(file)
                             thumbnail_created = True
                         encoded_key = encode_key(field.field)
                         event_timestamps[encoded_key] = time_stamp_dataset[x]
@@ -227,7 +233,9 @@ class MappedHD5Ingestor():
         dir = Path(directory)
         filename = uid + ".png"
         # file = io.BytesIO()
-        auto_contrast_image.save(dir / filename, format='PNG')
+        file = dir / Path(filename)
+        auto_contrast_image.save(file, format='PNG')
+        return file
 
     def _extract_metadata(self):
         metadata = {}
@@ -236,8 +244,7 @@ class MappedHD5Ingestor():
             # we replace them with :, after removing the leading slash
             encoded_key = encode_key(mapping.field)
             try:
-                data_value = self._file[mapping.field]
-                metadata[encoded_key] = data_value[()].decode("utf-8")
+                metadata[encoded_key] = get_dataset_value(self._file[mapping.field])
             except Exception as e:
                 self._issues.append(f"Error finding run_start mapping {mapping.field}")
                 continue

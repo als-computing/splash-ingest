@@ -134,3 +134,7 @@ dmypy.json
 
 *.hdf5
 .scratch/
+
+# emacs
+\#*\#
+*~

@@ -31,6 +31,7 @@ mapping_dict = {
         ],
         "stream_mappings": {
             "primary": {
+                "thumbnails": 1,
                 "time_stamp": "/process/acquisition/time_stamp",
                 "conf_mappings": [
                         {"device": "all",
@@ -103,13 +104,31 @@ def sample_file(tmp_path):
     # stream configuration fields
     file.create_dataset('/measurement/instrument/detector/dark_field_value', data=dark_timestamps, dtype='float64')
     file.create_dataset('/measurement/instrument/attenuator/setup/filter_y', data=dark_timestamps, dtype='float64')
-
-    file.close()
     file = h5py.File(tmp_path / 'test.hdf5', 'r')
     yield file
     print('closing file')
     file.close()
 
+
+@pytest.fixture
+def sample_file_no_timestamp(tmp_path):
+    # data = np.empty((num_frames_primary, 5, 5))
+    data = np.empty((num_frames_primary, 5, 5))
+    start_time = datetime.datetime.now()
+    primary_sample_position_x = []
+    for frame_num in range(0, num_frames_primary):
+        data[frame_num] = np.random.random_sample((5, 5))
+        primary_sample_position_x.append(float(frame_num))
+    start_time = datetime.datetime.now()
+
+    file = h5py.File(tmp_path / 'test.hdf5', 'w')
+    file.create_dataset('/measurement/sample/name', data=b'my sample', dtype='|S256')
+    file.create_dataset('/exchange/data', data=data)
+    file.create_dataset('/process/acquisition/sample_position_x', data=primary_sample_position_x)
+    file = h5py.File(tmp_path / 'test_no_timestamp.hdf5', 'r')
+    yield file
+    print('closing file')
+    file.close()
 
 def test_hdf5_mapped_ingestor(sample_file, tmp_path):
     ingestor = MappedHD5Ingestor(Mapping(**mapping_dict), sample_file, "test_root", thumbs_root=tmp_path)
@@ -167,6 +186,60 @@ def test_hdf5_mapped_ingestor(sample_file, tmp_path):
     file = run_uid + ".png"
     assert Path(dir / file).exists()
 
+
+# def test_hdf5_no_timestamps(sample_file_no_timestamp, tmp_path):
+#     ingestor = MappedHD5Ingestor(Mapping(**mapping_dict), sample_file_no_timestamp, "test_root", thumbs_root=tmp_path)
+#     run_cache = SingleRunCache()
+#     result_events = []
+#     start_found = False
+#     stop_found = False
+#     run_uid = ""
+#     for name, doc in ingestor.generate_docstream():
+#         run_cache.callback(name, doc)
+#         if name == "start":
+#             assert doc[":measurement:sample:name"] == "my sample", "metadata in start doc"
+#             assert doc["projections"][0]['name'] == "foo_bar", "projection is in start doc"
+#             start_found = True
+#             run_uid = doc['uid']
+#             continue
+#         if name == "descriptor":
+#             descriptors.append(doc)
+#             continue
+#         if name == "resource":
+#             doc["spec"] == mapping_dict["resource_spec"]
+#             continue
+#         if name == "datum":
+#             result_datums.append(doc)
+#             continue
+#         if name == "resource":
+#             result_events.append(doc)
+#             continue
+#         if name == "event":
+#             result_events.append(doc)
+#         if name == "stop":
+#             stop_found = True
+#             assert doc["num_events"]["primary"] == num_frames_primary
+#             # assert doc["num_events"]["darks"] == num_frames_darks
+#             continue
+
+#     assert start_found, "a start document was produced"
+#     assert stop_found, "a stop document was produced"
+
+#     assert len(descriptors) == 2, "return two descriptors"
+#     assert descriptors[0]["name"] == "primary", "first descriptor is primary"
+#     assert descriptors[1]["name"] == "darks", "second descriptor is darks"
+#     assert len(descriptors[0]["data_keys"].keys()) == 2, "primary has two data_keys"
+#     assert descriptors[0]['configuration'] is not None
+
+#     assert len(result_datums) == num_frames_primary + num_frames_darks
+#     assert len(result_events) == num_frames_primary + num_frames_darks
+
+#     run = run_cache.retrieve()
+#     stream = run["primary"].to_dask()
+#     assert stream
+#     dir = Path(tmp_path)
+#     file = run_uid + ".png"
+#     assert Path(dir / file).exists()
 
 def test_mapped_ingestor_bad_stream_field(sample_file):
     mapping_dict_bad_stream_field = {

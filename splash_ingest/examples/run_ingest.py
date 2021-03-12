@@ -25,3 +25,4 @@ for name, doc in ingestor.generate_docstream():
     pprint(doc)
     serializer(name, doc)
 pprint(ingestor.issues)
+

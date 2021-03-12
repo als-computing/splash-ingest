@@ -261,7 +261,7 @@ class MappedHD5Ingestor():
                 continue
             units = hdf5_dataset.attrs.get('units')
             if units is not None:
-                units = units.decode()
+                units = [unit.decode() for unit in units]
             descriptor = dict(
                     dtype='number',
                     source='file',
@@ -304,7 +304,7 @@ class MappedHD5Ingestor():
                     continue
                 units = hdf5_dataset.attrs.get('units')
                 if units is not None:
-                    units = units.decode()
+                    units = [unit.decode() for unit in units]
                 data_keys = dict(
                         dtype='number',
                         source='file',
@@ -321,7 +321,7 @@ class MappedHD5Ingestor():
 
 def get_dataset_value(data_set):
     if "S" in data_set.dtype.str:
-        return data_set[()].decode("utf-8")
+        return np.char.decode(data_set)
     else:
         return data_set[()]
 

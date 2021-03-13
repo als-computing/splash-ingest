@@ -49,7 +49,7 @@ class MappedHD5Ingestor():
 
 
     """
-    def __init__(self, mapping: Mapping, file, reference_root_name, data_groups=[], thumbs_root=None):
+    def __init__(self, mapping: Mapping, file, reference_root_name, pack_pages=True, data_groups=[], thumbs_root=None):
         """
 
         Parameters
@@ -74,6 +74,10 @@ class MappedHD5Ingestor():
         self._thumbnails: [Path] = []
         self._issues = []
         self._run_bundle = None
+        self._pack_pages = pack_pages
+        if self._pack_pages:
+            self._events = []
+            self._datums = []
 
     @property
     def thumbnails(self):
@@ -200,7 +204,10 @@ class MappedHD5Ingestor():
                             "point_number": x})  # need kwargs for HDF5 datum
                     # if logger.isEnabledFor(logging.DEBUG):
                     #     logger.debug(f"run: {start_doc['uid']} Creating datum with uid: {datum['datum_id']}")
-                    yield 'datum', datum
+                    if self._pack_pages:
+                        self._datums.append(datum)
+                    else:
+                        yield 'datum', datum
                     event_data[encoded_key] = datum['datum_id']
                     filled_fields[encoded_key] = False
                 else:
@@ -223,7 +230,19 @@ class MappedHD5Ingestor():
 
             if logger.isEnabledFor(logging.DEBUG):
                 logger.debug(f"Creating event with uid: {event['uid']}")
-            yield 'event', event
+
+            if self._pack_pages:
+                self._events.append(event)
+            else:
+                yield 'event', event
+
+        if self._pack_pages:
+            if len(self._events) > 0:
+                yield "event_page", event_model.pack_event_page(*self._events)
+            if len(self._datums) > 0:
+                yield "datum_page", event_model.pack_datum_page(*self._datums)
+
+
 
     def _build_thumbnail(self, uid, directory, data):
         middle_image = round(data.shape[0] / 2)

@@ -1,5 +1,6 @@
 import logging
 from pathlib import Path
+from re import S
 from typing import List
 
 import event_model
@@ -48,7 +49,7 @@ class MappedHD5Ingestor():
 
 
     """
-    def __init__(self, mapping: Mapping, file, reference_root_name, data_groups=[], thumbs_root=None):
+    def __init__(self, mapping: Mapping, file, reference_root_name, pack_pages=True, data_groups=[], thumbs_root=None):
         """
 
         Parameters
@@ -72,6 +73,11 @@ class MappedHD5Ingestor():
         self._thumbs_root = thumbs_root
         self._thumbnails: [Path] = []
         self._issues = []
+        self._run_bundle = None
+        self._pack_pages = pack_pages
+        if self._pack_pages:
+            self._events = []
+            self._datums = []
 
     @property
     def thumbnails(self):
@@ -108,116 +114,135 @@ class MappedHD5Ingestor():
         if logger.isEnabledFor(logging.DEBUG):
             keys = metadata.keys()
             logger.debug(f"Metdata keys : {list(keys)}")
-        run_bundle = event_model.compose_run(metadata=metadata)
-        start_doc = run_bundle.start_doc
+        self._run_bundle = event_model.compose_run(metadata=metadata)
+        start_doc = self._run_bundle.start_doc
         start_doc['projections'] = self._mapping.projections
         start_doc['data_groups'] = self._data_groups
         yield 'start', start_doc
         if logger.isEnabledFor(logging.DEBUG):
             logger.debug(f"run: {start_doc['uid']} Start doc created")
-        hd5_resource = run_bundle.compose_resource(
+        h5_resource = self._run_bundle.compose_resource(
             spec=self._mapping.resource_spec,
             root=self._reference_root_name,
             resource_path=self._file.filename,  # need to calculate a relative path
             resource_kwargs={})
         if logger.isEnabledFor(logging.DEBUG):
-            logger.debug(f"run: {start_doc['uid']} resource doc created uid: {hd5_resource.resource_doc['uid']}")
-        yield 'resource', hd5_resource.resource_doc
+            logger.debug(f"run: {start_doc['uid']} resource doc created uid: {h5_resource.resource_doc['uid']}")
+        yield 'resource', h5_resource.resource_doc
 
-        thumbnail_created = False  # for now, we'll just created one thumbnail per run, first 2d image we find
         # produce documents for each stream
-        stream_mappings: StreamMapping = self._mapping.stream_mappings
-        if stream_mappings is not None:
-            for stream_name in stream_mappings.keys():
-                if logger.isEnabledFor(logging.DEBUG):
-                    logger.debug(f"run: {start_doc['uid']} Creating stream: {stream_name}")
-                stream_timestamp_field = stream_mappings[stream_name].time_stamp
-                mapping = stream_mappings[stream_name]
+        if self._mapping.stream_mappings is not None:
+            for stream_name in self._mapping.stream_mappings.keys():
+                yield from self._process_stream(stream_name, h5_resource)
 
-                descriptor_keys = self._extract_stream_descriptor_keys(mapping.mapping_fields)
-                configuration = self._extract_stream_configuration(mapping.conf_mappings)
-                stream_bundle = run_bundle.compose_descriptor(
-                    data_keys=descriptor_keys,
-                    name=stream_name,
-                    configuration=configuration
-                    )
-                if logger.isEnabledFor(logging.DEBUG):
-                    logger.debug(f"run: {start_doc['uid']} Creating descriptor with "
-                                 f"uid: {stream_bundle.descriptor_doc['uid']}")
-                yield 'descriptor', stream_bundle.descriptor_doc
-                num_events = 0
-                try:
-                    num_events = calc_num_events(mapping.mapping_fields, self._file)
-                except FieldNotInResourceError as e:
-                    self.issues.append(e)
-                if num_events == 0:  # test this
-                    continue
-
-                logger.info(f" run: {start_doc['uid']} expecting {str(num_events)} events")
-                # produce documents for each event (event and datum)
-                for x in range(0, num_events):
-                    try:
-                        time_stamp_dataset = self._file[stream_timestamp_field][()]
-                    except Exception as e:
-                        self._issues.append(f"run: {start_doc['uid']} Error fetching timestamp for {stream_name}"
-                                            f"slice: {str(x)} - {str(e.args[0])}")
-                        break
-                    if time_stamp_dataset is None or len(time_stamp_dataset) == 0:
-                        self._issues.append(f"run: {start_doc['uid']} Missing timestamp for"
-                                            f"{stream_name} slice: {str(x)}")
-                        break
-                    event_data = {}
-                    event_timestamps = {}
-                    filled_fields = {}
-                    # create datums and events
-                    for field in mapping.mapping_fields:
-                        # Go through each field in the stream. If field not marked
-                        # as external, extract the value. Otherwise create a datum
-                        try:
-                            dataset = self._file[field.field]
-                        except Exception as e:
-                            self._issues.append(f"Error finding event mapping {field.field}")
-                            continue
-                        if not thumbnail_created and self._thumbs_root is not None and len(dataset.shape) == 3:
-                            file = self._build_thumbnail(start_doc['uid'], self._thumbs_root, dataset)
-                            self._thumbnails.append(file)
-                            thumbnail_created = True
-                        encoded_key = encode_key(field.field)
-                        event_timestamps[encoded_key] = time_stamp_dataset[x]
-                        if field.external:
-                            # if logger.isEnabledFor(logging.DEBUG):
-                            #     logger.debug(f"run: {start_doc['uid']} event for {field.external} inserted as datum")
-                            # field's data provided in datum
-                            datum = hd5_resource.compose_datum(datum_kwargs={
-                                    "key": encoded_key,
-                                    "point_number": x})  # need kwargs for HDF5 datum
-                            # if logger.isEnabledFor(logging.DEBUG):
-                            #     logger.debug(f"run: {start_doc['uid']} Creating datum with uid: {datum['datum_id']}")
-                            yield 'datum', datum
-                            event_data[encoded_key] = datum['datum_id']
-                            filled_fields[encoded_key] = False
-                        else:
-                            # field's data provided in event
-                            if logger.isEnabledFor(logging.INFO):
-                                logger.info(f'event for {field.external} inserted in event')
-                            event_data[encoded_key] = dataset[x]
-                    
-                    event = stream_bundle.compose_event(
-                        data=event_data,
-                        filled=filled_fields,
-                        seq_num=x,
-                        timestamps=event_timestamps
-                    )
-                    if logger.isEnabledFor(logging.DEBUG):
-                        logger.debug(f"run: {start_doc['uid']} Creating event with uid: {event['uid']}")
-                    yield 'event', event
-
-        stop_doc = run_bundle.compose_stop()
+        stop_doc = self._run_bundle.compose_stop()
         if logger.isEnabledFor(logging.DEBUG):
             logger.debug(f"run: {start_doc['uid']} stop doc {str(stop_doc)}")
         yield 'stop', stop_doc
         if len(self._issues) > 0:
             logger.info(f" run: {start_doc['uid']} had issues {str(self._issues)}")
+
+    def _process_stream(self, stream_name, resource_doc):
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug(f"run: Creating stream: {stream_name}")
+        stream_timestamp_field = self._mapping.stream_mappings[stream_name].time_stamp
+        stream_mapping = self._mapping.stream_mappings[stream_name]
+
+        descriptor_keys = self._extract_stream_descriptor_keys(stream_mapping.mapping_fields)
+        configuration = self._extract_stream_configuration(stream_mapping.conf_mappings)
+        stream_bundle = self._run_bundle.compose_descriptor(
+            data_keys=descriptor_keys,
+            name=stream_name,
+            configuration=configuration
+            )
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug(f"run: Creating descriptor with "
+                         f"uid: {stream_bundle.descriptor_doc['uid']}")
+        yield 'descriptor', stream_bundle.descriptor_doc
+        num_events = 0
+        try:
+            num_events = calc_num_events(stream_mapping.mapping_fields, self._file)
+        except FieldNotInResourceError as e:
+            self.issues.append(e)
+        if num_events == 0:  # test this
+            return
+
+        logger.info(f"expecting {str(num_events)} events")
+        # produce documents for each event (event and datum)
+        for x in range(0, num_events):
+            try:
+                time_stamp_dataset = self._file[stream_timestamp_field][()]
+            except Exception as e:
+                self._issues.append(f"Error fetching timestamp for {stream_name}"
+                                    f"slice: {str(x)} - {str(e.args[0])}")
+                break
+            if time_stamp_dataset is None or len(time_stamp_dataset) == 0:
+                self._issues.append(f"Missing timestamp for"
+                                    f"{stream_name} slice: {str(x)}")
+                break
+            event_data = {}
+            event_timestamps = {}
+            filled_fields = {}
+            # create datums and events
+            for field in stream_mapping.mapping_fields:
+                # Go through each field in the stream. If field not marked
+                # as external, extract the value. Otherwise create a datum
+                try:
+                    dataset = self._file[field.field]
+                except Exception as e:
+                    self._issues.append(f"Error finding event mapping {field.field}")
+                    continue
+
+                encoded_key = encode_key(field.field)
+                event_timestamps[encoded_key] = time_stamp_dataset[x]
+                if field.external:
+                    # if logger.isEnabledFor(logging.DEBUG):
+                    #     logger.debug(f"run: {start_doc['uid']} event for {field.external} inserted as datum")
+                    # field's data provided in datum
+                    datum = resource_doc.compose_datum(datum_kwargs={
+                            "key": encoded_key,
+                            "point_number": x})  # need kwargs for HDF5 datum
+                    # if logger.isEnabledFor(logging.DEBUG):
+                    #     logger.debug(f"run: {start_doc['uid']} Creating datum with uid: {datum['datum_id']}")
+                    if self._pack_pages:
+                        self._datums.append(datum)
+                    else:
+                        yield 'datum', datum
+                    event_data[encoded_key] = datum['datum_id']
+                    filled_fields[encoded_key] = False
+                else:
+                    # field's data provided in event
+                    if logger.isEnabledFor(logging.INFO):
+                        logger.info(f'event for {field.external} inserted in event')
+                    event_data[encoded_key] = dataset[x]
+            
+                if (stream_mapping.thumbnails and stream_mapping.thumbnails > 0
+                    and self._thumbs_root is not None and len(dataset.shape) == 3):
+                    file = self._build_thumbnail(self._run_bundle.start_doc['uid'], self._thumbs_root, dataset)
+                    self._thumbnails.append(file)
+
+            event = stream_bundle.compose_event(
+                data=event_data,
+                filled=filled_fields,
+                seq_num=x,
+                timestamps=event_timestamps
+            )
+
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug(f"Creating event with uid: {event['uid']}")
+
+            if self._pack_pages:
+                self._events.append(event)
+            else:
+                yield 'event', event
+
+        if self._pack_pages:
+            if len(self._events) > 0:
+                yield "event_page", event_model.pack_event_page(*self._events)
+            if len(self._datums) > 0:
+                yield "datum_page", event_model.pack_datum_page(*self._datums)
+
+
 
     def _build_thumbnail(self, uid, directory, data):
         middle_image = round(data.shape[0] / 2)

@@ -23,7 +23,7 @@ class StreamMapping(BaseModel):
     mapping_fields: List[StreamMappingField]
     time_stamp: str = Field(title='time_stamp field', description='field to use to get time stamp values')
     conf_mappings: Optional[List[ConfigurationMapping]] = Field(title="event descriptor confguration")
-
+    thumbnails: Optional[int] = Field(description="number of thumbnails to produce from stream")
 
 class Mapping(BaseModel):
     schema_version: int = SCHEMA_VERSION

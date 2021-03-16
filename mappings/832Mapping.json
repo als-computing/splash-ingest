@@ -56,6 +56,7 @@
     "stream_mappings": {
     "primary": {
         "time_stamp": "/process/acquisition/image_date",
+	"thumbnails": 1,
         "conf_mappings":
             [
                 {"device": "all",

@@ -215,7 +215,7 @@ class MappedHD5Ingestor():
                     if logger.isEnabledFor(logging.INFO):
                         logger.info(f'event for {field.external} inserted in event')
                     event_data[encoded_key] = dataset[x]
-            
+                print(f'stream mapping thumbnails: {stream_mapping.thumbnails}')
                 if (stream_mapping.thumbnails and stream_mapping.thumbnails > 0
                     and self._thumbs_root is not None and len(dataset.shape) == 3):
                     file = self._build_thumbnail(self._run_bundle.start_doc['uid'], self._thumbs_root, dataset)

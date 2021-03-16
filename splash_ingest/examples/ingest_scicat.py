@@ -42,6 +42,12 @@ class ScicatTomo():
     datasetTypes = ["RawDatasets", "DerivedDatasets", "Proposals"]
     test = False
 
+    # path that the container for the zip service mounts for data e.g. '/data'
+    data_mount_point = os.getenv("DATA_MOUNT_POINT"
+    )
+    # path that maps to container's '/data' volume e.g. '/global/cfs/projectdirs/als/data_mover'
+    data_root = os.getenv("DATA_ROOT")
+
     def __init__(self, **kwargs):
         # nothing to do
         for key, value in kwargs.items():
@@ -49,6 +55,7 @@ class ScicatTomo():
             setattr(self, key, value)
         # get token
         self.token = self.get_token(username=self.username, password=self.password)
+
 
     def get_token(self, username=None, password=None):
         if username is None: username = self.username
@@ -271,14 +278,30 @@ class ScicatTomo():
         principalInvestigator = run_start.get(':measurement:sample:experiment:pi')
         if not principalInvestigator:
             principalInvestigator = "uknonwn"
-        creationLocation = run_start.get(':measurement:instrument:source:beamline')
+        creationLocation = run_start.get(':measurement:instrument:source:beamline')[0]
         if not creationLocation:
             creationLocation = "unknown"
         creationTime = run_start.get(':process:acquisition:start_date')
+
         if not creationTime:
-            creationTime = "unkown"
+            creationTime = None
         else:
-            creationTime = datetime.datetime.isoformat(datetime.datetime.fromtimestamp(creationTime[0])) + "Z"
+            creationTime = creationTime[0].decode()
+
+                # calculate the path that the zip container knows
+        # self._data_root = /global/cfs/projectdirs/als/data_mover/8.3.2/raw/foo/bar
+        # filename = /global/cfs/projectdirs/als/data_mover/8.3.2/raw/foo/bar/user/file.h5
+        # so...
+        # relative_path = /user/file.h5
+        print(f'self.data_root: {self.data_root}')
+        print(f'filpath: {filepath}')
+
+        print(f'self.data_mount_point {self.data_mount_point}')
+        relative_path = Path(os.path.relpath(filepath, self.data_mount_point))
+        print(f'relativepath {relative_path}')
+        calculated_path = self.data_root / relative_path
+        print("calculated " + str(calculated_path))
+
         data = {  # model for the raw datasets as defined in the RawDatasets
             "owner": None,
             "contactEmail": "dmcreynolds@lbl.gov",
@@ -300,28 +323,29 @@ class ScicatTomo():
             "principalInvestigator": principalInvestigator,
             # "pid": run_start['uid'],
             "size": 0,
-            "sourceFolder": filepath.parent.as_posix(),
+            "sourceFolder": calculated_path.parent.as_posix(),
             "size": self.getFileSizeFromPathObj(filepath),
             "scientificMetadata": self.extract_scientific_metadata(descriptor_doc),
             "sampleId": run_start.get(':measurement:sample:uuid'),
             "isPublished": False,
             
         }
+        pprint(data)
         urlAdd = "RawDatasets"
         encoded_data = json.loads(json.dumps(data, cls=NPArrayEncoder))
         # determine thumbnail: 
         # upload
         print(thumbnail)
-        if thumbnail.exists():
-            npid = self.uploadBit(pid = self.pid, urlAdd = urlAdd, data = encoded_data, attachFile = thumbnail)
+        npid = self.uploadBit(pid = self.pid, urlAdd = urlAdd, data = encoded_data, attachFile = thumbnail)
         logger.info("* * * * adding datablock")
         datasetType="RawDatasets"
+
         dataBlock = {
             # "id": npid,
             "size": self.getFileSizeFromPathObj(filepath),
             "dataFileList": [
                 {
-                    "path": str(filepath.absolute()),
+                    "path": str(calculated_path.absolute()),
                     "size": self.getFileSizeFromPathObj(filepath),
                     "time": self.getFileModTimeFromPathObj(filepath),
                     "chk": "",  # do not do remote: getFileChecksumFromPathObj(filename)
@@ -338,10 +362,11 @@ class ScicatTomo():
             "updatedBy": "datasetUpload",
             "datasetId": npid,
             "updatedAt": datetime.datetime.isoformat(datetime.datetime.utcnow()) + "Z",
-            "createdAt": datetime.datetime.isoformat(datetime.datetime.utcnow()) + "Z",
+            "createdAt": creationTime,
             # "createdAt": "",
             # "updatedAt": ""
         }
+        print(dataBlock)
         url = self.baseurl + f"{datasetType}/{urllib.parse.quote_plus(npid)}/origdatablocks"
         logging.debug(url)
         resp = self.sendToSciCat(url, dataBlock)
@@ -517,11 +542,10 @@ def gen_ev_docs(scm: ScicatTomo, mapping_file, h5_file_path, data_groups):
                 # pprint(doc)
         pprint(ingestor.issues)
         # descriptor.map()
-        thumbnail = 0
+        thumbnail = None
         if len(ingestor.thumbnails) > 0:
             thumbnail = ingestor.thumbnails[0]
-        print(ingestor.thumbnails)
-        scm.process_start_doc(Path(h5_file_path), start_doc, descriptor_doc=descriptor, thumbnail=thumbnail)
+        scm.process_start_doc(Path(h5_file_path), start_doc, descriptor_doc=descriptor) #, thumbnail=thumbnail)
 
 
 
@@ -533,6 +557,7 @@ def main():
     mapping_file = sys.argv[1]
     h5_file = sys.argv[2]
     data_groups = sys.argv[3]
+    
     scm = ScicatTomo()
     gen_ev_docs(scm, mapping_file, h5_file, data_groups)
 

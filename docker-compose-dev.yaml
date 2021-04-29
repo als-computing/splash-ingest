@@ -1,0 +1,10 @@
+version: "3"
+services:
+  splash_ingest:
+    environment: 
+      - MAX_WORKERS=1
+    volumes: 
+      - .:/app
+    ports:
+      - '8089:8080'
+    command: uvicorn splash_ingest.server.api:app --reload

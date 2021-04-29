@@ -25,6 +25,7 @@ class StreamMapping(BaseModel):
     conf_mappings: Optional[List[ConfigurationMapping]] = Field(title="event descriptor confguration")
     thumbnails: Optional[int] = Field(description="number of thumbnails to produce from stream")
 
+
 class Mapping(BaseModel):
     schema_version: int = SCHEMA_VERSION
     name: str = Field(title='Mapping name', description='Name of this mapping')
@@ -34,3 +35,12 @@ class Mapping(BaseModel):
     md_mappings: Optional[List[MappingField]]
     stream_mappings: Optional[Dict[str, StreamMapping]]
     projections: Optional[List[Dict]]
+
+
+class Issue(BaseModel):
+    stage: str
+    msg: str
+    exception: Exception
+
+    class Config:
+        arbitrary_types_allowed = True

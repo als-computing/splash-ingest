@@ -20,7 +20,7 @@ from .ingest_service import (
     )
 
 from splash_ingest.model import Mapping
-from splash_ingest_manager.model import Job
+from .model import Job, IngestType
 
 API_KEY_NAME = "api_key"
 INGEST_JOBS_API = 'ingest_jobs'
@@ -58,8 +58,9 @@ app = FastAPI(
 
 @app.on_event("startup")
 async def startup_event():
-    logger.debug('!!!!!!!!!starting server')
+    logger.info('!!!!!!!!!starting server')
     db = MongoClient(MONGO_DB_URI)[SPLASH_DB_NAME]
+    logger.info(db)
     init_ingest_service(db)
     init_api_service(db)
     # start_job_poller()
@@ -86,8 +87,7 @@ async def get_api_key_from_request(
 class CreateJobRequest(BaseModel):
     file_path: str = Field(description="path to where file to ingest is located")
     mapping_name: str = Field(description="mapping name, used to find mapping file in database")
-    data_groups: List[str] = Field(description="adds gropu authorization filters" +
-                                                "that will be inserted into start document")
+    ingest_types: List[IngestType] = Field(description="Type of ingestions to be done")
 
 
 class CreateJobResponse(BaseModel):
@@ -107,7 +107,7 @@ async def submit_job(request: CreateJobRequest, api_key: APIKey = Depends(get_ap
         client_key.client,
         request.file_path,
         request.mapping_name,
-        request.data_groups)
+        request.ingest_types)
     return CreateJobResponse(message="success", job_id=job.id)
   
 

@@ -1,5 +1,5 @@
 {
-    "name": "als832_dx_1",
+    "name": "als832_dx_2",
     "description": "string",
     "version": "string",
     "resource_spec": "MultiKeySlice",
@@ -37,10 +37,6 @@
             "description": null
         },
         {
-            "field": "/measurement/sample/file_name",
-            "description": null
-        },
-        {
             "field": "/measurement/sample/experiment/pi",
             "description": null
         },
@@ -56,6 +52,7 @@
     "stream_mappings": {
     "primary": {
         "time_stamp": "/process/acquisition/image_date",
+        "thumbnails": 1,
         "conf_mappings":
             [
                 {"device": "all",
@@ -131,18 +128,25 @@
 },
 "projections": [
     {
-    "name": "app",
-    "configuration": {},
+    "name": "dx_app",
+    "configuration": {
+        "intent": "app"
+    },
     "projection": {
             "image_data": {
             "type": "linked",
             "location": "event",
             "stream": "primary",
             "field": ":exchange:data"
-        },
+        },  
         "sample_name": {
             "type": "configuration",
-            "field": ":measurement:sample:name",
+            "field": ":measurement:sample:file_name",
+            "location": "start"
+        },
+        "sample_id": {
+            "type": "configuration",
+            "field": ":measurement:sample:uuid",
             "location": "start"
         },
         "instrument_name": {
@@ -150,9 +154,14 @@
             "field": ":measurement:instrument:name",
             "location": "start"
         },
-        "experimenter_name": {
+        "beamline": {
             "type": "configuration",
-            "field": ":measurement:sample:experimenter:name",
+            "field": ":measurement:instrument:source:beamline",
+            "location": "start"
+        },
+        "collection_date": {
+            "type": "configuration",
+            "field": ":process:acquisition:start_date",
             "location": "start"
         },
         "proposal": {
@@ -165,11 +174,17 @@
             "field": ":measurement:sample:experiment:title",
             "location": "start"
         },
-        "collection_time": {
+        "experimenter_name": {
             "type": "configuration",
-            "field": "time",
+            "field": ":measurement:sample:experimenter:name",
+            "location": "start"
+        },
+        "pi_name": {
+            "type": "configuration",
+            "field": ":measurement:sample:experiment:pi",
             "location": "start"
         }
+        
     }
     }
 ]

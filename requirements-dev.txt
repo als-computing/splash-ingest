@@ -1,4 +1,5 @@
-pytest
-flake8
 databroker
+flake8
 mongomock
+pytest
+requests-mock

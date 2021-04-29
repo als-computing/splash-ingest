@@ -1,7 +1,7 @@
 from pymongo import MongoClient
 
-from splash_ingest_manager.api_auth_service import create_api_client, init_api_service
-from splash_ingest_manager.api import INGEST_JOBS_API
+from splash_ingest.server.api_auth_service import create_api_client, init_api_service
+from splash_ingest.server.api import INGEST_JOBS_API
 
 db = MongoClient().splash
 init_api_service(db)

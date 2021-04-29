@@ -1,11 +1,10 @@
 import datetime
+import json
 import h5py
-from pluggy.hooks import normalize_hookimpl_opts
 import pytest
-import pytz
 from mongomock import MongoClient
-import numpy as np
-from splash_ingest_manager.api_auth_service import create_api_client, init_api_service as init_api_key
+from splash_ingest.server.api_auth_service import create_api_client, init_api_service as init_api_key
+from splash_ingest.server.model import IngestType
 from splash_ingest.model import Mapping
 from ..ingest_service import (
     bluesky_context,
@@ -30,7 +29,6 @@ def init_mongomock():
     create_api_client('user1', 'sirius_cybernetics_gpp', 'door_operation')
 
 
-
 def test_jobs_init():
     assert service_context.ingest_jobs is not None, "test that init creates a collection"
     assert len(service_context.ingest_jobs.index_information()) == 4
@@ -42,7 +40,7 @@ def test_jobs_init():
 def test_job_create():
     document_path = "/foo/bar.hdf5"
 
-    job = create_job("user1", document_path, "magrathia_42", ['deep_thought'])
+    job = create_job("user1", document_path, "magrathia_42", [IngestType.databroker])
     assert job.id is not None, "Job gets a new uid"
     assert job.submit_time is not None, "Job gets a submit time"
     assert job.submitter == "user1", "Job gets provided submitter"
@@ -66,8 +64,8 @@ def test_update_non_existant_job():
 def test_query_unstarted_jobs():
     document_path = "/foo/bar.hdf5"
 
-    job = create_job("user1", document_path, "magrathia", ['deep_thought'])
-    job = create_job("user1", document_path, "magrathia", ['deep_thought'])
+    job = create_job("user1", document_path, "magrathia", [IngestType.databroker])
+    job = create_job("user1", document_path, "magrathia", [IngestType.databroker])
 
     jobs = find_unstarted_jobs()
     for job in jobs:
@@ -107,12 +105,15 @@ def test_ingest(sample_file, init_mongomock):
     create_mapping("slartibartfast", mapping)
     mapping = find_mapping("slartibartfast", "magrathia")
     assert mapping.resource_spec == "MultiKeySlice", "test a field"
-    job = create_job("user1", sample_file.filename, "magrathia", ["deep_thought"])
+    job = create_job(
+        "user1",
+        sample_file.filename,
+        "magrathia",
+        [IngestType.databroker])
     start_uid = ingest("slartibartfast", job)
     job = find_job(job.id)
     assert job is not None
-    assert job.status == JobStatus.successful, f'injest completed  {job.status_history}'
-
+    assert job.status == JobStatus.successful, f'injest completed  {job.status_history[-1]}'
     assert bluesky_context.db['run_start'].find_one({"uid": start_uid}) is not None, "job wrote start doc"
 
 

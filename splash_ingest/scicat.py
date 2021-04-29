@@ -9,6 +9,7 @@ import base64
 import logging
 from pathlib import Path
 from pprint import pprint
+from typing import List
 
 import numpy as np
 import requests  # for HTTP requests
@@ -50,7 +51,7 @@ class ScicatIngestor():
     datasetTypes = ["RawDatasets", "DerivedDatasets", "Proposals"]
     test = False
 
-    def __init__(self, issues: list[Issue], **kwargs):
+    def __init__(self, issues: List[Issue], **kwargs):
         # nothing to do
         for key, value in kwargs.items():
             assert key in self.settables, f"key {key} is not a valid input argument"

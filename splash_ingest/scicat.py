@@ -17,19 +17,13 @@ import requests  # for HTTP requests
 from splash_ingest.docstream import MappedH5Generator
 from splash_ingest.model import Mapping, Issue
 
-logger = logging.getLogger("splash" + __name__)
-can_debug = False
-can_info = False
+logger = logging.getLogger(__name__)
+can_debug = logger.isEnabledFor(logging.DEBUG)
 
 
-def debug(message):
-    if can_debug:
-        logger.debug(message)
-
-
-def info(message):
-    if can_info:
-        logger.info(message)
+class ScicatCommError(Exception):
+    def __init__(self, message):
+        self.message = message
 
 
 class ScicatIngestor():
@@ -52,12 +46,23 @@ class ScicatIngestor():
     test = False
 
     def __init__(self, issues: List[Issue], **kwargs):
+        self.issues = issues
         # nothing to do
         for key, value in kwargs.items():
             assert key in self.settables, f"key {key} is not a valid input argument"
             setattr(self, key, value)
-        # get token
-        self.token = self._get_token(username=self.username, password=self.password)
+        logger.info(f"Starting ingestor talking to scicat at: {self.baseurl}")
+        if self.baseurl[-1] != "/":
+            self.baseurl = self.baseurl + "/"
+            logger.info(f"Baseurl corrected to: {self.baseurl}")
+
+    def _add_error(self, msg: str, exc: Exception):
+        logger.error(f"{msg} encountered exception: {exc}")
+        self.issues.append(Issue(stage="scicat", msg=msg, exception=exc))
+
+    def _add_issue(self, msg):
+        logger.info(msg)
+        self.issues.append(Issue(stage="scicat", msg=msg))
 
     def _get_token(self, username=None, password=None):
         if username is None:
@@ -66,7 +71,7 @@ class ScicatIngestor():
             password = self.password
         """logs in using the provided username / password combination 
         and receives token for further communication use"""
-        logger.info("Getting new token ...")
+        logger.info(f"Getting new token for user {username}")
 
         response = requests.post(
             self.baseurl + "Users/login",
@@ -80,6 +85,7 @@ class ScicatIngestor():
             err = response.json()["error"]
             logger.error(f'{err["name"]}, {err["statusCode"]}: {err["message"]}')
             self._add_issue(f'error getting token {err["name"]}, {err["statusCode"]}: {err["message"]}')
+            return None
 
         data = response.json()
         # print("Response:", data)
@@ -136,58 +142,79 @@ class ScicatIngestor():
             # pipe contents of the file through
             return hashlib.md5(file_to_check.read()).hexdigest()
 
-    def _add_thumbnail(self, dataset_id=None, filename=None, dataset_type="RawDatasets"):
+    # def _add_thumbnail(self, owner_group, dataset_id=None, filename=None, dataset_type="RawDatasets"):
 
-        def encodeImageToThumbnail(filename, imType='jpg'):
-            header = "data:image/{imType};base64,".format(imType=imType)
-            with open(filename, 'rb') as f:
-                data = f.read()
-            dataBytes = base64.b64encode(data)
-            dataStr = dataBytes.decode('UTF-8')
-            return header + dataStr
+    #     def encodeImageToThumbnail(filename, imType='jpg'):
+    #         header = "data:image/{imType};base64,".format(imType=imType)
+    #         with open(filename, 'rb') as f:
+    #             data = f.read()
+    #         dataBytes = base64.b64encode(data)
+    #         dataStr = dataBytes.decode('UTF-8')
+    #         return header + dataStr
 
-        dataBlock = {
-            "caption": filename.stem,
-            "thumbnail": encodeImageToThumbnail(filename),
-            "datasetId": dataset_id,
-            "ownerGroup": "BAM 6.5",
-        }
+    #     dataBlock = {
+    #         "caption": filename.stem,
+    #         "thumbnail": encodeImageToThumbnail(filename),
+    #         "datasetId": dataset_id,
+    #         "ownerGroup": "BAM 6.5",
+    #     }
 
-        url = self.baseurl + f"{dataset_type}/{urllib.parse.quote_plus(dataset_id)}/attachments"
-        logger.debug(url)
-        resp = requests.post(
-                    url,
-                    params={"access_token": self.token},
-                    timeout=self.timeouts,
-                    stream=False,
-                    json=dataBlock,
-                    verify=self.sslVerify,
-                )
-        return resp
+    #     url = self.baseurl + f"{dataset_type}/{urllib.parse.quote_plus(dataset_id)}/attachments"
+    #     logger.debug(url)
+    #     resp = requests.post(
+    #                 url,
+    #                 params={"access_token": self.token},
+    #                 timeout=self.timeouts,
+    #                 stream=False,
+    #                 json=dataBlock,
+    #                 verify=self.sslVerify,
+    #             )
+    #     return resp
 
-    def _add_issue(self, msg, exception=None):
-        self.issues.append(Issue(stage="scicat", msg=msg, exception=exception))
+
 
     def ingest_run(self, filepath, run_start,  descriptor_doc, thumbnail=None):
-        if can_info:
-            info(f"Ingesting file {filepath}")
+        logger.info(f"Scicat ingestion started for {filepath}")
+        # get token
+        try:
+            self.token = self._get_token(username=self.username, password=self.password)
+        except Exception as e:
+            self._add_error("Could not generate token. Exiting.", e)
+            return
+        if not self.token:
+            self._add_issue("could not create token, exiting")
+            return
+
+        logger.info(f"Ingesting file {filepath}")
         try:
             projected_start_doc = project_start_doc(run_start, "app")
         except Exception as e:
-            logger.error("Unable to project using intent of app")
-            self._add_issue("error projecting start document", e)
+            self._add_error("error projecting start document. Exiting.", e)
+            return
+        
         if can_debug:
-            debug(f"projected start doc: {str(project_start_doc)}")
+            logger.debug(f"projected start doc: {str(project_start_doc)}")
         # make an access grop list that includes the name of the proposal and the name of the beamline
         access_groups = []
         access_groups.append(projected_start_doc.get('proposal'))
         access_groups.append(projected_start_doc.get('beamline'))
+        owner_group = self.username
+        try:
+            self._create_sample(projected_start_doc, access_groups, owner_group)
+        except Exception as e:
+            self._add_error(f"Error creating sample for {filepath}. Continuing without sample.", e)
         
-        self._create_sample(projected_start_doc, access_groups)
-        scientific_metadata = self._extract_scientific_metadata(descriptor_doc)
-        self._create_raw_dataset(projected_start_doc, scientific_metadata, access_groups, filepath, thumbnail)
+        try:
+            scientific_metadata = self._extract_scientific_metadata(descriptor_doc)
+        except Exception as e:
+            self._add_error(f"Error getting scientific metadata. Continuing without.", e)
 
-    def _create_sample(self, projected_start_doc, access_groups):
+        try:
+            self._create_raw_dataset(projected_start_doc, scientific_metadata, access_groups, owner_group, filepath, thumbnail)
+        except Exception as e:
+            self._add_error("Error creating raw data set.", e)
+
+    def _create_sample(self, projected_start_doc, access_groups, owner_group):
         sample = {
             "sampleId": projected_start_doc.get('sample_id'),
             "owner": projected_start_doc.get('pi_name'),
@@ -195,20 +222,21 @@ class ScicatIngestor():
             "createdAt": datetime.isoformat(datetime.utcnow()) + "Z",
             "sampleCharacteristics": {},
             "isPublished": False,
-            "ownerGroup": projected_start_doc.get('proposal'),
+            "ownerGroup": owner_group,
             "accessGroups": access_groups,
             "createdBy": self.username,
             "updatedBy": self.username,
             "updatedAt": datetime.isoformat(datetime.utcnow()) + "Z"
         }
         sample_url = f'{self.baseurl}Samples'
+
         resp = self._send_to_scicat(sample_url, sample)
         if not resp.ok:  # can happen if sample id is a duplicate, but we can't tell that from the response
             err = resp.json()["error"]
-            logger.error(f'could not create sample  {err["statusCode"]}: {err["message"]}')
-            self._add_issue(f'could not create sample  {err["statusCode"]}: {err["message"]}')
+            raise ScicatCommError(f"Error creating Sample {err}")
 
-    def _create_raw_dataset(self, projected_start_doc, scientific_metadata, access_groups, filepath, thumbnail):
+
+    def _create_raw_dataset(self, projected_start_doc, scientific_metadata, access_groups, owner_group, filepath, thumbnail):
         principalInvestigator = projected_start_doc.get('pi_name')
         if not principalInvestigator:
             principalInvestigator = "uknonwn"
@@ -225,11 +253,11 @@ class ScicatIngestor():
             "updatedAt": datetime.isoformat(datetime.utcnow()) + "Z",
             "createdAt": datetime.isoformat(datetime.utcnow()) + "Z",
             "creationTime": (datetime.isoformat(datetime.fromtimestamp(
-                projected_start_doc.get('collection_date'))) + "Z"),
+                projected_start_doc.get('collection_date')[0])) + "Z"),
             "datasetName": filepath.stem,
             "type": "raw",
             "instrumentId": projected_start_doc.get('instrument_name'),
-            "ownerGroup": projected_start_doc.get('proposal'),
+            "ownerGroup": owner_group,
             "accessGroups": access_groups,
             "proposalId": projected_start_doc.get('proposal'),
             "dataFormat": "DX",
@@ -240,16 +268,24 @@ class ScicatIngestor():
             "sampleId": projected_start_doc.get('sample_id'),
             "isPublished": False
         }
-        urlAdd = "RawDatasets"
         encoded_data = json.loads(json.dumps(data, cls=NPArrayEncoder))
 
+        # create dataset 
+        raw_dataset_url = self.baseurl + "RawDataSets/replaceOrCreate"
+        resp = self._send_to_scicat(raw_dataset_url, encoded_data)
+        if not resp.ok:
+            err = resp.json()["error"]
+            raise ScicatCommError(f"Error creating raw dataset {err}")
+        new_pid = resp.json().get('pid')
+        logger.info(f"new dataset created {new_pid}")
+        # upload thumbnail
         if thumbnail and thumbnail.exists():
-            npid = self._upload_bytes(pid=self.pid, urlAdd=urlAdd, data=encoded_data, attachFile=thumbnail)
-        else:
-            npid = self._upload_bytes(pid=self.pid, urlAdd=urlAdd, data=encoded_data)
-        if can_info:
-            info(f"npid {npid} created")
-
+            resp = self._addThumbnail(new_pid, thumbnail, datasetType="RawDatasets", owner_group=owner_group)
+            if resp.ok:
+                logger.info(f"thumbnail created for {new_pid}")
+            else:
+                err = resp.json()["error"]
+                raise ScicatCommError(f"Error creating datablock. {err}", )
         datasetType = "RawDatasets"
         dataBlock = {
             # "id": npid,
@@ -267,25 +303,23 @@ class ScicatIngestor():
                     "perm": str(filepath.stat().st_mode),
                 }
             ],
-            "ownerGroup": projected_start_doc.get('proposal'),
+            "ownerGroup": owner_group,
             "accessGroups": access_groups,
-            "createdBy": "datasetUpload",
-            "updatedBy": "datasetUpload",
-            "datasetId": npid,
+            "createdBy": self.username,
+            "updatedBy": self.username,
+            "datasetId": new_pid,
             "updatedAt": datetime.isoformat(datetime.utcnow()) + "Z",
             "createdAt": datetime.isoformat(datetime.utcnow()) + "Z",
         }
-        url = self.baseurl + f"{datasetType}/{urllib.parse.quote_plus(npid)}/origdatablocks"
-        if can_debug:
-            debug(f"sending to {url}")
+        url = self.baseurl + f"{datasetType}/{urllib.parse.quote_plus(new_pid)}/origdatablocks"
+        logger.info(f"sending to {url} accessGroups: {access_groups}, ownerGroup: {owner_group}")
         resp = self._send_to_scicat(url, dataBlock)
         if not resp.ok:
             err = resp.json()["error"]
-            logger.error(f'could not create sample  {err["statusCode"]}: {err["message"]}')
-            self._add_issue(f'could not create sample  {err["statusCode"]}: {err["message"]}')
-        if can_info:
-            info(f"origdatablock sent for {npid}")
-        
+            raise ScicatCommError(f"Error creating datablock. {err}") 
+        logger.info(f"origdatablock sent for {new_pid}")
+
+
     @staticmethod
     def _extract_scientific_metadata(descriptor):
         retrun_dict = {k.replace(":", "/"): v for k, v in descriptor['configuration']['all']['data'].items()}
@@ -297,61 +331,49 @@ class ScicatIngestor():
         # timestamp = pathobj.lstat().st_mtime
         return str(datetime.fromtimestamp(pathobj.lstat().st_mtime))
 
-    # def _getEntries(self, url, whereDict={}):
-    #     # gets the complete response when searching for a particular entry based on a dictionary of keyword-value pairs
-    #     resp = self._sendToSciCat(url, {"filter": {"where": whereDict}}, cmd="get")
-    #     self.entries = resp
-    #     return resp
+    # def _upload_bytes(self, pid=0, urlAdd=None, data=None, attachFile=None):
+    #     # upload the bits to the database
+    #     # try sending it...
+    #     if pid == 0:  # and not self.uploadType in ["samples"]:
+    #         logger.info("* * * * creating new entry")
+    #         url = self.baseurl + f"{urlAdd}/replaceOrCreate"
+    #         try:
+    #             resp = self._send_to_scicat(url, data)
+    #             resp_json = resp.json()
+    #             if not resp.ok:
+    #                 raise ScicatCommError("error creating ")
+    #             if "pid" in resp_json:
+    #                 npid = resp_json["pid"]
+    #             elif "id" in resp_json:
+    #                 npid = resp_json["id"]
+    #             elif "proposalId" in resp_json:
+    #                 npid = resp_json["proposalId"]
+    #         except Exception as e:
+    #             self._add_error("could not upload bytes", e)
 
-    # def _getPid(self, url, whereDict={}, returnIfNone=0, returnField='pid'):
-    #     # returns only the (first matching) pid (or proposalId in case of proposals) matching a given search request
-    #     resp = self._get_entries(url, whereDict)
-    #     if resp == []:
-    #         # no raw dataset available
-    #         pid = returnIfNone
-    #     else:
-    #         pid = resp[0][returnField]
-    #     self.pid = pid
-    #     return pid
+    #     elif pid != 0:  # and not adict["uploadType"] in ["samples"]:
+    #         logger.info("* * * * updating existing entry")
+    #         url = self.baseurl + f"{urlAdd}/{urllib.parse.quote_plus(pid)}"
+    #         resp = self._send_to_scicat(url, data, "patch").json()
+    #         npid = pid
 
-   
-    def _upload_bytes(self, pid=0, urlAdd=None, data=None, attachFile=None):
-        # upload the bits to the database
-        # try sending it...
-        if not self.test and pid == 0:  # and not self.uploadType in ["samples"]:
-            logger.info("* * * * creating new entry")
-            url = self.baseurl + f"{urlAdd}/replaceOrCreate"
-            resp_json = self._send_to_scicat(url, data).json()
-            if "pid" in resp_json:
-                npid = resp_json["pid"]
-            elif "id" in resp_json:
-                npid = resp_json["id"]
-            elif "proposalId" in resp_json:
-                npid = resp_json["proposalId"]
+    #     if attachFile is not None:
+    #         # attach an additional file as "thumbnail"
+    #         assert isinstance(attachFile, Path), 'attachFile must be an instance of pathlib.Path'
 
-        elif not self.test and pid != 0:  # and not adict["uploadType"] in ["samples"]:
-            logger.info("* * * * updating existing entry")
-            url = self.baseurl + f"{urlAdd}/{urllib.parse.quote_plus(pid)}"
-            resp = self._send_to_scicat(url, data, "patch").json()
-            npid = pid
+    #         if attachFile.exists():
+    #             logger.info("attaching thumbnail {} to {} \n".format(attachFile, npid))
+    #             urlAddThumbnail = urlAdd
+    #             if urlAdd == "DerivedDatasets":
+    #                 urlAddThumbnail = "datasets"  # workaround for scicat inconsistency
+    #             resp = self._addThumbnail(npid, attachFile, datasetType=urlAddThumbnail)
+    #             logger.info(f"uploaded thumbnail for {npid}")
+    #     return npid
 
-        if attachFile is not None:
-            # attach an additional file as "thumbnail"
-            assert isinstance(attachFile, Path), 'attachFile must be an instance of pathlib.Path'
-
-            if attachFile.exists():
-                logger.info("attaching thumbnail {} to {} \n".format(attachFile, npid))
-                urlAddThumbnail = urlAdd
-                if urlAdd == "DerivedDatasets":
-                    urlAddThumbnail = "datasets"  # workaround for scicat inconsistency
-                resp = self._addThumbnail(npid, attachFile, datasetType=urlAddThumbnail)
-                if can_info:
-                    info(f"uploaded thumbnail for {npid}")
-        return npid
-
-    def _addThumbnail(self, datasetId=None, filename=None, datasetType="RawDatasets"):
+    def _addThumbnail(self, datasetId=None, filename=None, datasetType="RawDatasets", owner_group=None):
 
         def encodeImageToThumbnail(filename, imType='jpg'):
+            logging.info(f"Creating thumbnail for dataset: {filename}")
             header = "data:image/{imType};base64,".format(imType=imType)
             with open(filename, 'rb') as f:
                 data = f.read()
@@ -363,9 +385,9 @@ class ScicatIngestor():
             "caption": filename.stem,
             "thumbnail": encodeImageToThumbnail(filename),
             "datasetId": datasetId,
-            "ownerGroup": "ingestor",
+            "ownerGroup": owner_group,
         }
-
+        logging.info(f"Adding thumbnail for dataset: {datasetId}")
         url = self.baseurl + f"{datasetType}/{urllib.parse.quote_plus(datasetId)}/attachments"
         logging.debug(url)
         resp = requests.post(
@@ -374,8 +396,7 @@ class ScicatIngestor():
                     timeout=self.timeouts,
                     stream=False,
                     json=dataBlock,
-                    verify=self.sslVerify,
-                )
+                    verify=self.sslVerify)
         return resp
 
 
@@ -443,6 +464,6 @@ if __name__ == "__main__":
     logger.setLevel(logging.DEBUG)
     can_debug = logger.isEnabledFor(logging.DEBUG)
     can_info = logger.isEnabledFor(logging.INFO)
-
-    scm = ScicatIngestor(password="23ljlkw")
+    issues = []
+    scm = ScicatIngestor(password="23ljlkw", issues=issues)
     gen_ev_docs(scm, '/home/dylan/data/beamlines/als832/20210421_091523_test3.h5', './mappings/832Mapping.json')

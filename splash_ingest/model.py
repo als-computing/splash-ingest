@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 from pydantic import BaseModel, Field
 
@@ -40,7 +40,7 @@ class Mapping(BaseModel):
 class Issue(BaseModel):
     stage: str
     msg: str
-    exception: Exception
+    exception: Union[Exception, None]
 
     class Config:
         arbitrary_types_allowed = True

@@ -6,11 +6,44 @@ services:
       - "27019:27017"
   app:
     build:
-        context: .
-        dockerfile: Dockerfile
+      context: .
+      dockerfile: Dockerfile
     ports:
       - '8089:80'
     environment: 
       - APP_MODULE=splash_ingest.server.api:app
       - MONGO_DB_URI=mongodb://db:27017/splash
-    
+  
+  poller:
+    build:
+      context: .
+      dockerfile: Dockerfile-poller
+    environment: 
+      - SCICAT_BASEURL=http://stelvio:3000/api/v3
+      - MONGO_DB_URI=mongodb://localhost:27019/splash
+      - THUMBS_ROOT=/data/thumbs
+      - SPLASH_LOG_LEVEL=INFO
+      - SCICAT_INGEST_USER=ingestor
+      - SCICAT_INGEST_PASSWORD=${SCICAT_INGEST_PASSWORD}
+    volumes:
+      - ~/data:/data
+    network_mode: host
+
+
+  mongo-express:
+    image: mongo-express
+    container_name: mongo-express
+    ports:
+        - 8081:8081
+    # volumes:
+    #     - ./.docker/mongo-express/docker-entrypoint.sh:/docker-entrypoint.sh
+    # env_file:
+    #     - .env
+    environment:
+        ME_CONFIG_MONGODB_SERVER: db
+        # ME_CONFIG_MONGODB_ADMINUSERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+        # ME_CONFIG_MONGODB_ADMINPASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+        ME_CONFIG_BASICAUTH_USERNAME: foo
+        ME_CONFIG_BASICAUTH_PASSWORD: bar
+    depends_on:
+        - db

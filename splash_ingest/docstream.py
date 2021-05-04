@@ -16,9 +16,10 @@ from .model import (
     StreamMappingField
 )
 
-logger = logging.getLogger('splash_ingest')
+logger = logging.getLogger(__name__)
 
-
+can_info = logger.isEnabledFor(logging.INFO)
+can_debug = logger.isEnabledFor(logging.DEBUG)
 class MappingNotFoundError(Exception):
     def __init__(self, location, missing_field):
         self.missing_field = missing_field
@@ -112,7 +113,7 @@ class MappedH5Generator():
         logger.info(f"Beginning ingestion for {self._file} using mapping {self._mapping.name}"
                     " for data_groups {self._data_groups}")
         metadata = self._extract_metadata()
-        if logger.isEnabledFor(logging.DEBUG):
+        if can_debug:
             keys = metadata.keys()
             logger.debug(f"Metdata keys : {list(keys)}")
         self._run_bundle = event_model.compose_run(metadata=metadata)
@@ -120,14 +121,14 @@ class MappedH5Generator():
         start_doc['projections'] = self._mapping.projections
         start_doc['data_groups'] = self._get_data_groups()
         yield 'start', start_doc
-        if logger.isEnabledFor(logging.DEBUG):
+        if can_debug:
             logger.debug(f"run: {start_doc['uid']} Start doc created")
         h5_resource = self._run_bundle.compose_resource(
             spec=self._mapping.resource_spec,
             root=self._reference_root_name,
             resource_path=self._file.filename,  # need to calculate a relative path
             resource_kwargs={})
-        if logger.isEnabledFor(logging.DEBUG):
+        if can_debug:
             logger.debug(f"run: {start_doc['uid']} resource doc created uid: {h5_resource.resource_doc['uid']}")
         yield 'resource', h5_resource.resource_doc
 
@@ -137,7 +138,7 @@ class MappedH5Generator():
                 yield from self._process_stream(stream_name, h5_resource)
 
         stop_doc = self._run_bundle.compose_stop()
-        if logger.isEnabledFor(logging.DEBUG):
+        if can_debug:
             logger.debug(f"run: {start_doc['uid']} stop doc {str(stop_doc)}")
         yield 'stop', stop_doc
         if len(self._issues) > 0:
@@ -154,7 +155,7 @@ class MappedH5Generator():
         self._issues.append(Issue(stage="gen_docsteram", msg=message, exception=exception))
 
     def _process_stream(self, stream_name, resource_doc):
-        if logger.isEnabledFor(logging.DEBUG):
+        if can_debug:
             logger.debug(f"run: Creating stream: {stream_name}")
         stream_timestamp_field = self._mapping.stream_mappings[stream_name].time_stamp
         stream_mapping = self._mapping.stream_mappings[stream_name]
@@ -166,7 +167,7 @@ class MappedH5Generator():
             name=stream_name,
             configuration=configuration
             )
-        if logger.isEnabledFor(logging.DEBUG):
+        if can_debug:
             logger.debug(f"run: Creating descriptor with "
                          f"uid: {stream_bundle.descriptor_doc['uid']}")
         yield 'descriptor', stream_bundle.descriptor_doc
@@ -205,13 +206,13 @@ class MappedH5Generator():
                 encoded_key = encode_key(field.field)
                 event_timestamps[encoded_key] = time_stamp_dataset[x]
                 if field.external:
-                    # if logger.isEnabledFor(logging.DEBUG):
+                    # if can_debug:
                     #     logger.debug(f"run: {start_doc['uid']} event for {field.external} inserted as datum")
                     # field's data provided in datum
                     datum = resource_doc.compose_datum(datum_kwargs={
                             "key": encoded_key,
                             "point_number": x})  # need kwargs for HDF5 datum
-                    # if logger.isEnabledFor(logging.DEBUG):
+                    # if can_debug:
                     #     logger.debug(f"run: {start_doc['uid']} Creating datum with uid: {datum['datum_id']}")
                     if self._pack_pages:
                         self._datums.append(datum)
@@ -221,8 +222,8 @@ class MappedH5Generator():
                     filled_fields[encoded_key] = False
                 else:
                     # field's data provided in event
-                    if logger.isEnabledFor(logging.INFO):
-                        logger.info(f'event for {field.external} inserted in event')
+                    if can_debug:
+                        logger.debug(f'event for {field.external} inserted in event')
                     event_data[encoded_key] = dataset[x]
             
                 if (stream_mapping.thumbnails and stream_mapping.thumbnails > 0
@@ -237,7 +238,7 @@ class MappedH5Generator():
                 timestamps=event_timestamps
             )
 
-            if logger.isEnabledFor(logging.DEBUG):
+            if can_debug:
                 logger.debug(f"Creating event with uid: {event['uid']}")
 
             if self._pack_pages:

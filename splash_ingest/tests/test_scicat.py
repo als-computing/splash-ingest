@@ -71,7 +71,7 @@ def test_projected_start():
     # find a projection
     projected = project_start_doc(start_doc, "app")
     assert projected['sample_name'] == "sample_name"
-    assert projected['collection_date'] == 1619564232.0
+    assert projected['collection_date'] == [1619564232.0]
 
 
 def test_scicate_ingest(sample_file):

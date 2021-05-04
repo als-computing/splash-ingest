@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from datetime import datetime
 import logging
+from pathlib import Path
 import sys
 import time
 from typing import List
@@ -14,11 +15,18 @@ from pymongo.collection import Collection
 
 from suitcase.mongo_normalized import Serializer
 
-from splash_ingest.model import Mapping
-from splash_ingest.ingestors import MappedHD5Ingestor
-from .model import Job, JobStatus, StatusItem, RevisionStamp
+from splash_ingest.model import Mapping, Issue
+from splash_ingest.docstream import MappedH5Generator
+from .model import (
+    IngestType,
+    Job,
+    JobStatus,
+    StatusItem,
+    RevisionStamp
+)
+from splash_ingest.scicat import ScicatIngestor
 
-logger = logging.getLogger('splash_ingest.ingest_service')
+logger = logging.getLogger(__name__)
 # these context objects help us inject dependencies, useful
 # in unit testing
 
@@ -83,8 +91,13 @@ def init_ingest_service(db: MongoClient):
     )
 
 
-def create_job(submitter, document_path: str, mapping_id: str, data_groups: List[str]):
-    job = Job(document_path=document_path, data_groups=data_groups)
+def create_job(
+        submitter,
+        document_path: str,
+        mapping_id: str,
+        ingest_types: List[IngestType]):
+
+    job = Job(document_path=document_path, ingest_types=ingest_types)
     job.id = str(uuid4())
     job.mapping_id = mapping_id
     job.submit_time = datetime.utcnow()
@@ -142,24 +155,34 @@ def create_mapping(submitter, mapping: Mapping):
     return id
 
 
-def poll_for_new_jobs(sleep_interval=5, thumbs_root=None):
+def poll_for_new_jobs(
+    sleep_interval,
+    scicat_baseurl,
+    scicat_user,
+    scicat_password,
+    thumbs_root=None
+):
+
     logger.info(f"Beginning polling, waiting {sleep_interval} each time")
     while True:
         try:
             job_list = find_unstarted_jobs()
-            num_pending = len(job_list)
-            # logger.info(f"jobs pending: {num_pending}")
             if len(job_list) == 0:
                 time.sleep(sleep_interval)
             else:
                 job: Job = job_list[-1]
                 logger.info(f"ingesting path: {job.document_path} mapping: {job.mapping_id}")
-                ingest('system', job_list[-1], thumbs_root)
+                ingest('system',
+                       job_list[-1],
+                       thumbs_root,
+                       scicat_baseurl,
+                       scicat_user,
+                       scicat_password)
         except Exception as e:
             logger.exception('polling thread exception', e)
 
 
-def ingest(submitter: str, job: Job, thumbs_root=None) -> str:
+def ingest(submitter: str, job: Job, thumbs_root=None, scicat_baseurl=None, scicat_user=None, scicat_password=None) -> str:
     """Updates job status and calls ingest method specified in job
 
     Parameters
@@ -175,8 +198,7 @@ def ingest(submitter: str, job: Job, thumbs_root=None) -> str:
         uid of the newly created start document
     """
     try:
-        if logger.isEnabledFor(logging.INFO):
-            logger.info(f"started job {repr(job)}")
+        logger.info(f"started job {repr(job)}")
 
         # this can be run on many processes, so
         # we can use thread locks to assure that the 
@@ -201,20 +223,38 @@ def ingest(submitter: str, job: Job, thumbs_root=None) -> str:
                            status=JobStatus.error, submitter=submitter, log=log))
             return
 
-        if logger.isEnabledFor(logging.INFO):
-            logger.info(f"mapping found for {job}")  
+        logger.info(f"mapping found for {job} for file {job.document_path}")  
         mapping = mapping_with_revision
         file = h5py.File(job.document_path, "r")
-        ingestor = MappedHD5Ingestor(mapping, file, 'mapping_ingestor', job.data_groups, thumbs_root=thumbs_root)
+        doc_generator = MappedH5Generator(mapping, file, 'mapping_ingestor', thumbs_root=thumbs_root)
+        # we always generate a docstream, but depending on the ingestors listed in the job we may do different things
+        # with the docstream
+
         start_uid = None
-        for name, document in ingestor.generate_docstream():
+        start_doc = {}
+        descriptor_doc = {}
+        for name, document in doc_generator.generate_docstream():
             if name == 'start':
                 start_uid = document['uid']
-            bluesky_context.serializer(name, document)
+                start_doc = document
+            if name == 'descriptor':
+                descriptor_doc = document
+            if IngestType.databroker in job.ingest_types:
+                bluesky_context.serializer(name, document)
+        issues: list[Issue] = doc_generator.issues
+        if IngestType.scicat_databroker in job.ingest_types:
+            scicat_ingestor = ScicatIngestor(
+                issues,
+                baseurl=scicat_baseurl,
+                username=scicat_user,
+                password=scicat_password)
+            scicat_ingestor.ingest_run(Path(job.document_path), start_doc, descriptor_doc)
         log = f'ingested start doc: {start_uid}'
-        if ingestor.issues and len(ingestor.issues) > 0:
-            for issue in ingestor.issues:
-                log += ("\n :" + issue)
+        if issues and len(issues) > 0:
+            for issue in issues:
+                log += f"\n :  {issue.msg}"
+                if issue.exception:
+                    log += f"\n    Exception: {issue.exception}" 
             status = StatusItem(time=datetime.utcnow(), status=JobStatus.complete_with_issues,
                                 submitter=submitter, log=log)
         else:

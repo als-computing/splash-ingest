@@ -34,7 +34,7 @@ setup(
     long_description=long_description,
     long_description_content_type='text/markdown',
     python_requires=">=3.7",
-    packages=find_packages(exclude=["docs", "tests"]),
+    packages=find_packages(exclude=["docs", "tests", "examples"]),
     extras_require={
         "webservice": requirements_webservice
     },

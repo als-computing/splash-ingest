@@ -1,0 +1,31 @@
+@startuml
+skinparam componentStyle rectangle
+
+[client] - public_http
+
+frame "api container" {
+    [ingest_service] - public_http
+   
+}
+
+database "mongo" {
+    [ingest_service] - dbquery
+    [ingest_jobs] - dbquery
+    [ingest_mappings] - dbquery
+
+    [databroker collections] - dbquery
+}
+
+frame "polling container" {
+    [poller] - dbquery
+    [poller] - http
+}
+
+frame "scicat container" {
+    [catamel] - http
+}
+
+
+
+
+@enduml

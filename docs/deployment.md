@@ -70,7 +70,7 @@ THUMBS_ROOT=/path/to/thumbs/
 
 To launch the webservice:
 
-`uvicorn splash_ingest_manager.api:app --reload` 
+`uvicorn splash_ingest.server.api:app --reload` 
 
 The optional `--reload` parameter detects file changes and reloads python.
 

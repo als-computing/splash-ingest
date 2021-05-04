@@ -1,0 +1,14 @@
+@startuml
+
+client --> fastAPI ++: file ready to ingest
+fastAPI --> JobsCollection --: create Job
+' Poller --> JobsCollection : get job
+JobsCollection <-- Poller : poll for job
+Poller --> IngestService ++: ingest
+IngestService --> MappingIngestor++: ingest
+MappingIngestor --> MongoSerializer ++: send docs
+MongoSerializer --> DatabrokerCollections: Persist docstream
+
+IngestService --> SciCatIngestor ++: ingest
+SciCatIngestor --> Catamel: many messages
+@enduml

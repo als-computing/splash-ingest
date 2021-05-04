@@ -9,15 +9,17 @@ from PIL import Image, ImageOps
 
 from .model import (
     ConfigurationMapping,
+    Issue,
     Mapping,
     MappingField,
     StreamMapping,
     StreamMappingField
 )
 
-logger = logging.getLogger('splash_ingest')
+logger = logging.getLogger(__name__)
 
-
+can_info = logger.isEnabledFor(logging.INFO)
+can_debug = logger.isEnabledFor(logging.DEBUG)
 class MappingNotFoundError(Exception):
     def __init__(self, location, missing_field):
         self.missing_field = missing_field
@@ -39,7 +41,7 @@ class EmptyTimestampsError(Exception):
         super().__init__(f"Cannot find mapping timestamps for stream {stream} using timestamp mapping: {field}")
 
 
-class MappedHD5Ingestor():
+class MappedH5Generator():
     """Provides an ingestor (make of event_model docstreams) based on a single hdf5 file
     and mapping document.
 
@@ -72,7 +74,7 @@ class MappedHD5Ingestor():
         self._data_groups = data_groups
         self._thumbs_root = thumbs_root
         self._thumbnails: [Path] = []
-        self._issues = []
+        self._issues: list[Issue] = []
         self._run_bundle = None
         self._pack_pages = pack_pages
         if self._pack_pages:
@@ -111,22 +113,22 @@ class MappedHD5Ingestor():
         logger.info(f"Beginning ingestion for {self._file} using mapping {self._mapping.name}"
                     " for data_groups {self._data_groups}")
         metadata = self._extract_metadata()
-        if logger.isEnabledFor(logging.DEBUG):
+        if can_debug:
             keys = metadata.keys()
             logger.debug(f"Metdata keys : {list(keys)}")
         self._run_bundle = event_model.compose_run(metadata=metadata)
         start_doc = self._run_bundle.start_doc
         start_doc['projections'] = self._mapping.projections
-        start_doc['data_groups'] = self._data_groups
+        start_doc['data_groups'] = self._get_data_groups()
         yield 'start', start_doc
-        if logger.isEnabledFor(logging.DEBUG):
+        if can_debug:
             logger.debug(f"run: {start_doc['uid']} Start doc created")
         h5_resource = self._run_bundle.compose_resource(
             spec=self._mapping.resource_spec,
             root=self._reference_root_name,
             resource_path=self._file.filename,  # need to calculate a relative path
             resource_kwargs={})
-        if logger.isEnabledFor(logging.DEBUG):
+        if can_debug:
             logger.debug(f"run: {start_doc['uid']} resource doc created uid: {h5_resource.resource_doc['uid']}")
         yield 'resource', h5_resource.resource_doc
 
@@ -136,14 +138,24 @@ class MappedHD5Ingestor():
                 yield from self._process_stream(stream_name, h5_resource)
 
         stop_doc = self._run_bundle.compose_stop()
-        if logger.isEnabledFor(logging.DEBUG):
+        if can_debug:
             logger.debug(f"run: {start_doc['uid']} stop doc {str(stop_doc)}")
         yield 'stop', stop_doc
         if len(self._issues) > 0:
             logger.info(f" run: {start_doc['uid']} had issues {str(self._issues)}")
 
+    def _get_data_groups(self):
+        # TODO intensely kludgy temporary solution to get data groups out of the file
+        dataset = self._file.get('/measurement/sample/experiment/proposal')
+        if dataset:
+            self._data_groups.append(self._get_dataset_value(self._file['/measurement/sample/experiment/proposal']))
+        return self._data_groups
+
+    def _add_issue(self, message, exception=None):
+        self._issues.append(Issue(stage="gen_docsteram", msg=message, exception=exception))
+
     def _process_stream(self, stream_name, resource_doc):
-        if logger.isEnabledFor(logging.DEBUG):
+        if can_debug:
             logger.debug(f"run: Creating stream: {stream_name}")
         stream_timestamp_field = self._mapping.stream_mappings[stream_name].time_stamp
         stream_mapping = self._mapping.stream_mappings[stream_name]
@@ -155,7 +167,7 @@ class MappedHD5Ingestor():
             name=stream_name,
             configuration=configuration
             )
-        if logger.isEnabledFor(logging.DEBUG):
+        if can_debug:
             logger.debug(f"run: Creating descriptor with "
                          f"uid: {stream_bundle.descriptor_doc['uid']}")
         yield 'descriptor', stream_bundle.descriptor_doc
@@ -163,9 +175,7 @@ class MappedHD5Ingestor():
         try:
             num_events = calc_num_events(stream_mapping.mapping_fields, self._file)
         except FieldNotInResourceError as e:
-            self.issues.append(e)
-        if num_events == 0:  # test this
-            return
+            self._add_issue("Error finding stream mapping", e)
 
         logger.info(f"expecting {str(num_events)} events")
         # produce documents for each event (event and datum)
@@ -173,13 +183,13 @@ class MappedHD5Ingestor():
             try:
                 time_stamp_dataset = self._file[stream_timestamp_field][()]
             except Exception as e:
-                self._issues.append(f"Error fetching timestamp for {stream_name}"
-                                    f"slice: {str(x)} - {str(e.args[0])}")
-                break
+                self._add_issue(f"Error fetching timestamp for {stream_name}"
+                                    f"slice: {str(x)} - {str(e.args[0])}", e)
+                continue
             if time_stamp_dataset is None or len(time_stamp_dataset) == 0:
-                self._issues.append(f"Missing timestamp for"
+                self._add_issue(f"Missing timestamp for"
                                     f"{stream_name} slice: {str(x)}")
-                break
+                continue
             event_data = {}
             event_timestamps = {}
             filled_fields = {}
@@ -190,19 +200,19 @@ class MappedHD5Ingestor():
                 try:
                     dataset = self._file[field.field]
                 except Exception as e:
-                    self._issues.append(f"Error finding event mapping {field.field}")
+                    self._add_issue(f"Error finding event mapping {field.field}", e)
                     continue
 
                 encoded_key = encode_key(field.field)
                 event_timestamps[encoded_key] = time_stamp_dataset[x]
                 if field.external:
-                    # if logger.isEnabledFor(logging.DEBUG):
+                    # if can_debug:
                     #     logger.debug(f"run: {start_doc['uid']} event for {field.external} inserted as datum")
                     # field's data provided in datum
                     datum = resource_doc.compose_datum(datum_kwargs={
                             "key": encoded_key,
                             "point_number": x})  # need kwargs for HDF5 datum
-                    # if logger.isEnabledFor(logging.DEBUG):
+                    # if can_debug:
                     #     logger.debug(f"run: {start_doc['uid']} Creating datum with uid: {datum['datum_id']}")
                     if self._pack_pages:
                         self._datums.append(datum)
@@ -212,8 +222,8 @@ class MappedHD5Ingestor():
                     filled_fields[encoded_key] = False
                 else:
                     # field's data provided in event
-                    if logger.isEnabledFor(logging.INFO):
-                        logger.info(f'event for {field.external} inserted in event')
+                    if can_debug:
+                        logger.debug(f'event for {field.external} inserted in event')
                     event_data[encoded_key] = dataset[x]
             
                 if (stream_mapping.thumbnails and stream_mapping.thumbnails > 0
@@ -228,7 +238,7 @@ class MappedHD5Ingestor():
                 timestamps=event_timestamps
             )
 
-            if logger.isEnabledFor(logging.DEBUG):
+            if can_debug:
                 logger.debug(f"Creating event with uid: {event['uid']}")
 
             if self._pack_pages:
@@ -269,9 +279,9 @@ class MappedHD5Ingestor():
             # we replace them with :, after removing the leading slash
             encoded_key = encode_key(mapping.field)
             try:
-                metadata[encoded_key] = get_dataset_value(self._file[mapping.field])
+                metadata[encoded_key] = self._get_dataset_value(self._file[mapping.field])
             except Exception as e:
-                self._issues.append(f"Error finding run_start mapping {mapping.field}")
+                self._add_issue(f"Error finding run_start mapping {mapping.field}", e)
                 continue
         return metadata
 
@@ -282,7 +292,7 @@ class MappedHD5Ingestor():
             try:
                 hdf5_dataset = self._file[mapping_field.field]
             except Exception as e:
-                self._issues.append(f"Error finding stream mapping {mapping_field}")
+                self._add_issue(f"Error finding stream mapping {mapping_field}", e)
                 continue
             units = hdf5_dataset.attrs.get('units')
             if units is not None:
@@ -325,7 +335,7 @@ class MappedHD5Ingestor():
                 try:
                     hdf5_dataset = self._file[field.field]
                 except Exception as e:
-                    self._issues.append(f"Error finding event desc configuration mapping {field.field}")
+                    self._add_issue(f"Error finding event desc configuration mapping {field.field}", e)
                     continue
                 units = hdf5_dataset.attrs.get('units')
                 if units is not None:
@@ -336,19 +346,27 @@ class MappedHD5Ingestor():
                         shape=hdf5_dataset.shape[1::],
                         units=units)
                 
-                device_config['data'][encoded_key] = get_dataset_value(hdf5_dataset)
+                device_config['data'][encoded_key] = self._get_dataset_value(hdf5_dataset)
                 # device_config['timestamps']['field'] = 
                 device_config['data_keys'][encoded_key] = data_keys
             confguration[conf_mapping.device] = device_config
 
         return confguration
 
-
-def get_dataset_value(data_set):
-    if "S" in data_set.dtype.str:
-        return data_set[()].decode("utf-8")
-    else:
-        return data_set[()]
+    def _get_dataset_value(self, data_set):
+        try:
+            if "S" in data_set.dtype.str:
+                if data_set.shape == (1,):
+                    return data_set.asstr()[0]
+                elif data_set.shape == ():
+                    return data_set[()].decode("utf-8")
+                else:
+                    return list(data_set.asstr())
+            else:
+                return data_set[()]
+        except Exception as e:
+            self._add_issue(f"error extracting field {data_set.name}", e)
+            return None
 
 def encode_key(key):
     return key.replace("/", ":")

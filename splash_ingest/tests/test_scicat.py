@@ -78,7 +78,7 @@ def test_scicate_ingest(sample_file):
     with requests_mock.Mocker() as mock_request:
         mock_request.post("http://localhost:3000/api/v3/Users/login", json={"id": "foobar"})
         mock_request.post("http://localhost:3000/api/v3/Samples", json={"sampleId": "sample_id"})
-        mock_request.post("http://localhost:3000/api/v3/RawDatasets/replaceOrCreate", json={"id": "42"})
+        mock_request.post("http://localhost:3000/api/v3/RawDatasets/replaceOrCreate", json={"pid": "42"})
         mock_request.post("http://localhost:3000/api/v3/RawDatasets/42/origdatablocks", json={"response": "random"})
         issues: list[Issue] = []
         scicat = ScicatIngestor(issues, host="localhost:3000")
@@ -92,7 +92,7 @@ start_doc = {
     "sample_id": "sample_id",
     "instrument_name": "instrument_name",
     "beamline": "beamline",
-    "collection_date": 1619564232.0,
+    "collection_date": [1619564232.0],
     "proposal": "proposal",
     "experiment_title": "experiment_title",
     "experimenter_name": "experimenter_name",

@@ -29,7 +29,7 @@ def check_job(url, api_key, job_id) -> Job:
 
 if __name__ == "__main__":
     jobs_url = "http://localhost:8089/api/ingest/jobs"
-    api_key = "d7c53f0a-8fba-41e6-a4b6-82a93b173198"
+    api_key = "..."
     job_id = create_job(jobs_url, api_key, "/data/beamlines/als832/20210421_091523_test3.h5", "als832_dx_2")
 
     # poll for a change in job status

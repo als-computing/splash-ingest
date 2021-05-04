@@ -19,11 +19,11 @@ services:
       context: .
       dockerfile: Dockerfile-poller
     environment: 
-      - SCICAT_BASEURL=http://stelvio:3000/api/v3
-      - MONGO_DB_URI=mongodb://localhost:27019/splash
-      - THUMBS_ROOT=/data/thumbs
-      - SPLASH_LOG_LEVEL=INFO
-      - SCICAT_INGEST_USER=ingestor
+      - SCICAT_BASEURL=${SCICAT_BASEURL}
+      - MONGO_DB_URI=${MONGO_DB_URI}
+      - THUMBS_ROOT=${THUMBS_ROOT}
+      - SPLASH_LOG_LEVEL=${SPLASH_LOG_LEVEL}
+      - SCICAT_INGEST_USER=${SCICAT_INGEST_USER}
       - SCICAT_INGEST_PASSWORD=${SCICAT_INGEST_PASSWORD}
     volumes:
       - ~/data:/data

@@ -30,9 +30,9 @@ api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
 api_key_cookie = APIKeyCookie(name=API_KEY_NAME, auto_error=False)
 
 config = Config(".env")
-MONGO_DB_URI = config("MONGO_DB_URI", cast=str, default="mongodb://localhost:27017/splash")
-SPLASH_DB_NAME = config("SPLASH_DB_NAME", cast=str, default="splash")
-SPLASH_LOG_LEVEL = config("SPLASH_LOG_LEVEL", cast=str, default="INFO")
+INGEST_DB_URI = config("INGEST_DB_URI", cast=str, default="mongodb://localhost:27017/ingest")
+INGEST_DB_NAME = config("INGEST_DB_NAME", cast=str, default="ingest")
+INGEST_LOG_LEVEL = config("INGEST_LOG_LEVEL", cast=str, default="INFO")
 
 logger = logging.getLogger('splash_ingest')
 
@@ -45,7 +45,7 @@ def init_logging():
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     ch.setFormatter(formatter)
     logger.addHandler(ch)
-    logger.setLevel(SPLASH_LOG_LEVEL)
+    logger.setLevel(INGEST_LOG_LEVEL)
 
 
 init_logging()
@@ -59,7 +59,7 @@ app = FastAPI(
 @app.on_event("startup")
 async def startup_event():
     logger.info('!!!!!!!!!starting server')
-    db = MongoClient(MONGO_DB_URI)[SPLASH_DB_NAME]
+    db = MongoClient(INGEST_DB_URI)[INGEST_DB_NAME]
     logger.info(db)
     init_ingest_service(db)
     init_api_service(db)

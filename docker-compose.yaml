@@ -12,7 +12,7 @@ services:
       - '8089:80'
     environment: 
       - APP_MODULE=splash_ingest.server.api:app
-      - MONGO_DB_URI=mongodb://db:27017/splash
+      - INGEST_DB_URI=mongodb://db:27017/splash
   
   poller:
     build:
@@ -20,7 +20,7 @@ services:
       dockerfile: Dockerfile-poller
     environment: 
       - SCICAT_BASEURL=${SCICAT_BASEURL}
-      - MONGO_DB_URI=${MONGO_DB_URI}
+      - DATABROKER_DB_URI=${DATABROKER_DB_URI}
       - THUMBS_ROOT=${THUMBS_ROOT}
       - SPLASH_LOG_LEVEL=${SPLASH_LOG_LEVEL}
       - SCICAT_INGEST_USER=${SCICAT_INGEST_USER}

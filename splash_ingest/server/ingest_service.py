@@ -51,11 +51,11 @@ service_context = ServiceMongoCollectionsContext()
 bluesky_context = BlueskyContext()
 
 
-def init_ingest_service(db: MongoClient):
-    bluesky_context.serializer = Serializer(metadatastore_db=db, asset_registry_db=db)
-    bluesky_context.db = db
-    service_context.db = db
-    service_context.ingest_jobs = db['ingest_jobs']
+def init_ingest_service(ingest_db: MongoClient, databroker_db: MongoClient):
+    bluesky_context.serializer = Serializer(metadatastore_db=databroker_db, asset_registry_db=databroker_db)
+    bluesky_context.db = databroker_db
+    service_context.db = ingest_db
+    service_context.ingest_jobs = ingest_db['ingest_jobs']
     service_context.ingest_jobs.create_index(
         [
             ('submit_time', -1)
@@ -75,7 +75,7 @@ def init_ingest_service(db: MongoClient):
         unique=True
     )
 
-    service_context.ingest_mappings = db['ingest_mappings']
+    service_context.ingest_mappings = ingest_db['ingest_mappings']
     service_context.ingest_mappings.create_index(
         [
             ('name', -1),

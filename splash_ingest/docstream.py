@@ -16,7 +16,7 @@ from .model import (
     StreamMappingField
 )
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("splash_ingest.docstream")
 
 can_info = logger.isEnabledFor(logging.INFO)
 can_debug = logger.isEnabledFor(logging.DEBUG)

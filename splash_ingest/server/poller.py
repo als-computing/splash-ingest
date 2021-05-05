@@ -17,9 +17,8 @@ THUMBS_ROOT = config("THUMBS_ROOT", cast=str, default="thumbs")
 SCICAT_BASEURL = config("SCICAT_BASEURL", cast=str, default="http://localhost:3000/api/v3")
 SCICAT_INGEST_USER = config("SCICAT_INGEST_USER", cast=str, default="ingest")
 SCICAT_INGEST_PASSWORD = config("SCICAT_INGEST_PASSWORD", cast=str, default="aman")
-logger = logging.getLogger(__name__)
 
-
+logger = logging.getLogger("splash_ingest")
 def init_logging():
     ch = logging.StreamHandler()
     ch.setLevel(INGEST_LOG_LEVEL)
@@ -31,7 +30,7 @@ def init_logging():
 
 
 init_logging()
-logger = logging.getLogger(__name__)
+
 
 logger.info("starting poller")
 logger.info(f"DATABROKER_DB_URI {DATABROKER_DB_URI}")

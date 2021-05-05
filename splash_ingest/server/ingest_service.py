@@ -26,7 +26,7 @@ from .model import (
 )
 from splash_ingest.scicat import ScicatIngestor
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("splash_ingest.ingest_service")
 # these context objects help us inject dependencies, useful
 # in unit testing
 
@@ -198,7 +198,7 @@ def ingest(submitter: str, job: Job, thumbs_root=None, scicat_baseurl=None, scic
         uid of the newly created start document
     """
     try:
-        logger.info(f"started job {repr(job)}")
+        logger.info(f"started job {job.id}")
 
         # this can be run on many processes, so
         # we can use thread locks to assure that the 
@@ -223,7 +223,7 @@ def ingest(submitter: str, job: Job, thumbs_root=None, scicat_baseurl=None, scic
                            status=JobStatus.error, submitter=submitter, log=log))
             return
 
-        logger.info(f"mapping found for {job} for file {job.document_path}")  
+        logger.debug(f"mapping found for {job.id} for file {job.document_path}")  
         mapping = mapping_with_revision
         file = h5py.File(job.document_path, "r")
         doc_generator = MappedH5Generator(mapping, file, 'mapping_ingestor', thumbs_root=thumbs_root)

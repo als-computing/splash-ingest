@@ -36,7 +36,7 @@ INGEST_DB_URI = config("INGEST_DB_URI", cast=str, default="mongodb://localhost:2
 INGEST_DB_NAME = config("INGEST_DB_NAME", cast=str, default="ingest")
 INGEST_LOG_LEVEL = config("INGEST_LOG_LEVEL", cast=str, default="INFO")
 
-logger = logging.getLogger('splash_ingest')
+logger = logging.getLogger('splash_ingest.api_auth')
 
 
 def init_logging():

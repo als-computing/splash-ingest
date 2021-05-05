@@ -17,7 +17,7 @@ import requests  # for HTTP requests
 from splash_ingest.docstream import MappedH5Generator
 from splash_ingest.model import Mapping, Issue
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("splash_ingest.scicat")
 can_debug = logger.isEnabledFor(logging.DEBUG)
 
 

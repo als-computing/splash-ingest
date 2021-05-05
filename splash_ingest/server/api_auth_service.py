@@ -12,7 +12,7 @@ from pymongo import MongoClient
 from pymongo.collection import Collection
 from passlib.hash import pbkdf2_sha256
 
-logger = logging.getLogger('splash_ingest')
+logger = logging.getLogger('splash_ingest.api')
 
 
 @dataclass

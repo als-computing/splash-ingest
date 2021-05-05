@@ -31,7 +31,7 @@ api_key_cookie = APIKeyCookie(name=API_KEY_NAME, auto_error=False)
 
 config = Config(".env")
 DATABROKER_DB_URI = config("DATABROKER_DB_URI", cast=str, default="mongodb://localhost:27017/databroker")
-DATABROKER_DB_NAME = config("SPLASH_DB_NAME", cast=str, default="databroker")
+DATABROKER_DB_NAME = config("DATABROKER_DB_NAME", cast=str, default="databroker")
 INGEST_DB_URI = config("INGEST_DB_URI", cast=str, default="mongodb://localhost:27017/ingest")
 INGEST_DB_NAME = config("INGEST_DB_NAME", cast=str, default="ingest")
 INGEST_LOG_LEVEL = config("INGEST_LOG_LEVEL", cast=str, default="INFO")

@@ -7,7 +7,7 @@ from splash_ingest.server.ingest_service import init_ingest_service, poll_for_ne
 
 config = Config(".env")
 DATABROKER_DB_URI = config("DATABROKER_DB_URI", cast=str, default="mongodb://localhost:27017/databroker")
-DATABROKER_DB_NAME = config("SPLASH_DB_NAME", cast=str, default="databroker")
+DATABROKER_DB_NAME = config("DATABROKER_DB_NAME", cast=str, default="databroker")
 INGEST_DB_URI = config("INGEST_DB_URI", cast=str, default="mongodb://localhost:27017/ingest")
 INGEST_DB_NAME = config("INGEST_DB_NAME", cast=str, default="ingest")
 INGEST_LOG_LEVEL = config("SPLASH_LOG_LEVEL", cast=str, default="INFO")

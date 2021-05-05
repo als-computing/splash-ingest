@@ -31,10 +31,24 @@ def init_logging():
 
 
 init_logging()
+logger = logging.getLogger(__name__)
 
 logger.info("starting poller")
+logger.info(f"DATABROKER_DB_URI {DATABROKER_DB_URI}")
+logger.info(f"DATABROKER_DB_NAME {DATABROKER_DB_NAME}")
+logger.info(f"INGEST_DB_URI {INGEST_DB_URI}")
+logger.info(f"INGEST_DB_NAME {INGEST_DB_NAME}")
+logger.info(f"INGEST_LOG_LEVEL {INGEST_LOG_LEVEL}")
+logger.info(f"POLLER_MAX_THREADS {POLLER_MAX_THREADS}")
+logger.info(f"POLLER_SLEEP_SECONDS {POLLER_SLEEP_SECONDS}")
+logger.info(f"THUMBS_ROOT {THUMBS_ROOT}")
+logger.info(f"SCICAT_BASEURL {SCICAT_BASEURL}")
+logger.info(f"SCICAT_INGEST_USER {SCICAT_INGEST_USER}")
+logger.info("SCICAT_INGEST_PASSWORD ...")
 databroker_db = MongoClient(DATABROKER_DB_URI)[DATABROKER_DB_NAME]
-init_ingest_service(databroker_db, )
+ingest_db = MongoClient(INGEST_DB_URI)[INGEST_DB_NAME]
+
+init_ingest_service(ingest_db, databroker_db)
 poll_for_new_jobs(
     POLLER_SLEEP_SECONDS,
     SCICAT_BASEURL,

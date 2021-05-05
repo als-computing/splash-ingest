@@ -30,6 +30,8 @@ api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
 api_key_cookie = APIKeyCookie(name=API_KEY_NAME, auto_error=False)
 
 config = Config(".env")
+DATABROKER_DB_URI = config("DATABROKER_DB_URI", cast=str, default="mongodb://localhost:27017/databroker")
+DATABROKER_DB_NAME = config("SPLASH_DB_NAME", cast=str, default="databroker")
 INGEST_DB_URI = config("INGEST_DB_URI", cast=str, default="mongodb://localhost:27017/ingest")
 INGEST_DB_NAME = config("INGEST_DB_NAME", cast=str, default="ingest")
 INGEST_LOG_LEVEL = config("INGEST_LOG_LEVEL", cast=str, default="INFO")
@@ -58,13 +60,16 @@ app = FastAPI(
 
 @app.on_event("startup")
 async def startup_event():
-    logger.info('!!!!!!!!!starting server')
-    db = MongoClient(INGEST_DB_URI)[INGEST_DB_NAME]
-    logger.info(db)
-    init_ingest_service(db)
-    init_api_service(db)
+    logger.info('starting api server')
+    logger.info(f"DATABROKER_DB_URI {DATABROKER_DB_URI}")
+    logger.info(f"DATABROKER_DB_NAME {DATABROKER_DB_NAME}") 
+    logger.info(f"INGEST_DB_URI {INGEST_DB_URI}")
+    logger.info(f"INGEST_DB_NAME {INGEST_DB_NAME}")
+    databroker_db = MongoClient(DATABROKER_DB_URI)[DATABROKER_DB_NAME]
+    ingest_db = MongoClient(INGEST_DB_URI)[INGEST_DB_NAME]
+    init_ingest_service(ingest_db, databroker_db)
+    init_api_service(ingest_db)
     # start_job_poller()
-
 
 
 async def get_api_key_from_request(

@@ -1,7 +1,8 @@
 import time
 
 import requests
-from splash_ingest.server.model import Job, JobStatus, StatusItem
+from splash_ingest.server.model import Job, JobStatus
+
 
 def create_job(url, api_key, file_path, mapping_name):
     request = {

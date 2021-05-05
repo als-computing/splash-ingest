@@ -6,9 +6,13 @@ services:
     volumes: 
       - .:/app
     ports:
-        - '5678:5678'
+      - '8089:80'
     command: uvicorn splash_ingest.server.api:app --reload --port=80 --host=0.0.0.0
   poller:
     volumes:
       - ~/data:/data
       - .:/app
+networks: 
+  default: 
+    external: 
+      name: scicat

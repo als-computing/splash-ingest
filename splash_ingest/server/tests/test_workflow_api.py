@@ -12,14 +12,16 @@ from ..model import IngestType, Job
 from ..api import INGEST_JOBS_API, API_KEY_NAME
 
 
+
+
 @pytest.fixture()
 def client():
     client = TestClient(app)
-    db = MongoClient().test_db
-    init_api_service(db)
-    init_ingest_service(db)
+    databroker_db = MongoClient().databroker_db
+    ingest_db = MongoClient().ingest_db
+    init_api_service(ingest_db)
+    init_ingest_service(ingest_db, databroker_db)
     return client
-
 
 def test_create_job_api(client: TestClient):
     key = create_api_client('user1', 'sirius_cybernetics_gpp', INGEST_JOBS_API)

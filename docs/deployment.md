@@ -4,7 +4,7 @@ The repository contains a [Makefile](../Makefile) that assists in locally creati
 Deployment requires a running docker enviornmnet on your local machine.
 
 ### Settings
-Borth servicews accept several environment variables to be set. These can be passed into docker using the -e flag. You can also 
+Borth services accept several environment variables to be set. These can be passed into docker using the -e flag. You can also 
 create a .env file that stores them.
 
 ```

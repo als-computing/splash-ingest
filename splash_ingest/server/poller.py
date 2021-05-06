@@ -77,4 +77,6 @@ def sigterm_handler(signum, frame):
 
 signal.signal(signal.SIGTERM, sigterm_handler)
 
-threading.Thread(poll_for_new_jobs)
+ingest_thread = threading.Thread(poll_for_new_jobs)
+ingest_thread.start()
+ingest_thread.join()

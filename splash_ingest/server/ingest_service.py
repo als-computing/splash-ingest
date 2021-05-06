@@ -198,14 +198,14 @@ def ingest(submitter: str, job: Job, thumbs_root=None, scicat_baseurl=None, scic
         uid of the newly created start document
     """
     try:
-        logger.info(f"started job {job.id}")
+        logger.info(f"{job.id} started job {job.id}")
 
         # this can be run on many processes, so
         # we can use thread locks to assure that the 
         # job hasn't already been started, so check here first. Not perfect...
         persisted_job = find_job(job.id)
         if persisted_job.status != JobStatus.submitted:
-            logger.info(f"Job {job.id} on document {job.document_path} already started, exiting.")
+            logger.info(f"{job.id} on document {job.document_path} already started, exiting.")
             return
 
         set_job_status(job.id,
@@ -217,13 +217,13 @@ def ingest(submitter: str, job: Job, thumbs_root=None, scicat_baseurl=None, scic
         mapping_with_revision = find_mapping(submitter, job.mapping_id)
 
         if mapping_with_revision is None:
-            log = f"no mapping found for {job.id} - {job.mapping_id.name} {job.mapping_id.version}"
-            logger.info(log)
+            job_log = f"{job.id} no mapping found for {job.mapping_id.name} {job.mapping_id.version}"
+            logger.info(job_log)
             set_job_status(job.id, StatusItem(time=datetime.utcnow(),
-                           status=JobStatus.error, submitter=submitter, log=log))
+                           status=JobStatus.error, submitter=submitter, log=job_log))
             return
 
-        logger.debug(f"mapping found for {job.id} for file {job.document_path}")  
+        logger.info(f"mapping found for {job.id} for file {job.document_path}") 
         mapping = mapping_with_revision
         file = h5py.File(job.document_path, "r")
         doc_generator = MappedH5Generator(mapping, file, 'mapping_ingestor', thumbs_root=thumbs_root)
@@ -241,29 +241,33 @@ def ingest(submitter: str, job: Job, thumbs_root=None, scicat_baseurl=None, scic
                 descriptor_doc = document
             if IngestType.databroker in job.ingest_types:
                 bluesky_context.serializer(name, document)
+        logger.info(f"{job.id} databroker ingestion complete")
         issues: list[Issue] = doc_generator.issues
         if IngestType.scicat_databroker in job.ingest_types:
+            logger.info(f"{job.id} scicat ingestion starting")
             scicat_ingestor = ScicatIngestor(
                 issues,
                 baseurl=scicat_baseurl,
                 username=scicat_user,
-                password=scicat_password)
+                password=scicat_password,
+                job_id=job.id)
             scicat_ingestor.ingest_run(Path(job.document_path), start_doc, descriptor_doc)
-        log = f'ingested start doc: {start_uid}'
+            logger.info(f"{job.id} scicat ingestion complete")
+        job_log = f'ingested start doc: {start_uid}'
         if issues and len(issues) > 0:
             for issue in issues:
-                log += f"\n :  {issue.msg}"
+                job_log += f"\n :  {issue.msg}"
                 if issue.exception:
-                    log += f"\n    Exception: {issue.exception}" 
+                    job_log += f"\n    Exception: {issue.exception}"
             status = StatusItem(time=datetime.utcnow(), status=JobStatus.complete_with_issues,
-                                submitter=submitter, log=log)
+                                submitter=submitter, log=job_log)
         else:
-            status = StatusItem(time=datetime.utcnow(), status=JobStatus.successful, submitter=submitter, log=log)
+            status = StatusItem(time=datetime.utcnow(), status=JobStatus.successful, submitter=submitter, log=job_log)
         set_job_status(job.id, status)
         return start_uid
 
     except Exception:
         exc_type, exc_value, exc_tb = sys.exc_info()
-        log = traceback.format_exception(exc_type, exc_value, exc_tb)
-        status = StatusItem(time=datetime.utcnow(), status=JobStatus.error, submitter=submitter, log=str(log))
+        job_log = traceback.format_exception(exc_type, exc_value, exc_tb)
+        status = StatusItem(time=datetime.utcnow(), status=JobStatus.error, submitter=submitter, log=str(job_log))
         set_job_status(job.id, status)

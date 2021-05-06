@@ -38,11 +38,12 @@ class ScicatIngestor():
     delete_existing = False
     # You should see a nice, but abbreviated table here with the logbook contents.
     token = None  # store token here
-    settables = ['host', 'baseurl', 'timeouts', 'sslVerify', 'username', 'password', 'token']
+    settables = ['host', 'baseurl', 'timeouts', 'sslVerify', 'username', 'password', 'token', "job_id"]
     pid = 0  # gets set if you search for something
     entries = None  # gets set if you search for something
     datasetType = "RawDatasets"
     datasetTypes = ["RawDatasets", "DerivedDatasets", "Proposals"]
+    job_id = "0"
     test = False
 
     def __init__(self, issues: List[Issue], **kwargs):
@@ -57,11 +58,11 @@ class ScicatIngestor():
             logger.info(f"Baseurl corrected to: {self.baseurl}")
 
     def _add_error(self, msg: str, exc: Exception):
-        logger.error(f"{msg} encountered exception: {exc}")
+        logger.error(f"{self.job_id} {msg} encountered exception: {exc}")
         self.issues.append(Issue(stage="scicat", msg=msg, exception=exc))
 
     def _add_issue(self, msg):
-        logger.info(msg)
+        logger.info(f"{self.job_id} {msg}")
         self.issues.append(Issue(stage="scicat", msg=msg))
 
     def _get_token(self, username=None, password=None):
@@ -71,7 +72,7 @@ class ScicatIngestor():
             password = self.password
         """logs in using the provided username / password combination 
         and receives token for further communication use"""
-        logger.info(f"Getting new token for user {username}")
+        logger.info(f"{self.job_id} Getting new token for user {username}")
 
         response = requests.post(
             self.baseurl + "Users/login",
@@ -81,16 +82,16 @@ class ScicatIngestor():
             verify=self.sslVerify,
         )
         if not response.ok:
-            logger.error(f'** Error received: {response}')
+            logger.error(f'{self.job_id} ** Error received: {response}')
             err = response.json()["error"]
-            logger.error(f'{err["name"]}, {err["statusCode"]}: {err["message"]}')
+            logger.error(f'{self.job_id} {err["name"]}, {err["statusCode"]}: {err["message"]}')
             self._add_issue(f'error getting token {err["name"]}, {err["statusCode"]}: {err["message"]}')
             return None
 
         data = response.json()
         # print("Response:", data)
         token = data["id"]  # not sure if semantically correct
-        logger.info(f"token: {token}")
+        logger.info(f"{self.job_id} token: {token}")
         self.token = token  # store new token
         return token
 
@@ -174,7 +175,7 @@ class ScicatIngestor():
 
 
     def ingest_run(self, filepath, run_start,  descriptor_doc, thumbnail=None):
-        logger.info(f"Scicat ingestion started for {filepath}")
+        logger.info(f"{self.job_id} Scicat ingestion started for {filepath}")
         # get token
         try:
             self.token = self._get_token(username=self.username, password=self.password)
@@ -185,7 +186,7 @@ class ScicatIngestor():
             self._add_issue("could not create token, exiting")
             return
 
-        logger.info(f"Ingesting file {filepath}")
+        logger.info(f"{self.job_id} Ingesting file {filepath}")
         try:
             projected_start_doc = project_start_doc(run_start, "app")
         except Exception as e:
@@ -193,7 +194,7 @@ class ScicatIngestor():
             return
         
         if can_debug:
-            logger.debug(f"projected start doc: {str(project_start_doc)}")
+            logger.debug(f"{self.job_id} projected start doc: {str(project_start_doc)}")
         # make an access grop list that includes the name of the proposal and the name of the beamline
         access_groups = []
         access_groups.append(projected_start_doc.get('proposal'))
@@ -277,12 +278,12 @@ class ScicatIngestor():
             err = resp.json()["error"]
             raise ScicatCommError(f"Error creating raw dataset {err}")
         new_pid = resp.json().get('pid')
-        logger.info(f"new dataset created {new_pid}")
+        logger.info(f"{self.job_id} new dataset created {new_pid}")
         # upload thumbnail
         if thumbnail and thumbnail.exists():
             resp = self._addThumbnail(new_pid, thumbnail, datasetType="RawDatasets", owner_group=owner_group)
             if resp.ok:
-                logger.info(f"thumbnail created for {new_pid}")
+                logger.info(f"{self.job_id} thumbnail created for {new_pid}")
             else:
                 err = resp.json()["error"]
                 raise ScicatCommError(f"Error creating datablock. {err}", )
@@ -312,12 +313,12 @@ class ScicatIngestor():
             "createdAt": datetime.isoformat(datetime.utcnow()) + "Z",
         }
         url = self.baseurl + f"{datasetType}/{urllib.parse.quote_plus(new_pid)}/origdatablocks"
-        logger.info(f"sending to {url} accessGroups: {access_groups}, ownerGroup: {owner_group}")
+        logger.info(f"{self.job_id} sending to {url} accessGroups: {access_groups}, ownerGroup: {owner_group}")
         resp = self._send_to_scicat(url, dataBlock)
         if not resp.ok:
             err = resp.json()["error"]
             raise ScicatCommError(f"Error creating datablock. {err}") 
-        logger.info(f"origdatablock sent for {new_pid}")
+        logger.info(f"{self.job_id} origdatablock sent for {new_pid}")
 
 
     @staticmethod

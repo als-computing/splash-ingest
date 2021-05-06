@@ -60,23 +60,24 @@ class TerminateRequested():
 
 terminate_requested = TerminateRequested
 
-poll_for_new_jobs(
+
+def sigterm_handler(signum, frame):
+    logger.info(f"sig terminate received: {signum}")
+    terminate_requested.state = True
+
+
+signal.signal(signal.SIGTERM, sigterm_handler)
+signal.signal(signal.SIGINT, sigterm_handler)
+
+ingest_thread = threading.Thread(target=poll_for_new_jobs, args=(
     POLLER_SLEEP_SECONDS,
     SCICAT_BASEURL,
     SCICAT_INGEST_USER,
     SCICAT_INGEST_PASSWORD,
     terminate_requested,
     THUMBS_ROOT
-)
+))
 
-
-def sigterm_handler(signum, frame):
-    logger.info("sigterm received")
-    terminate_requested.state = True
-
-
-signal.signal(signal.SIGTERM, sigterm_handler)
-
-ingest_thread = threading.Thread(poll_for_new_jobs)
+logger.info("starting polling thread")
 ingest_thread.start()
 ingest_thread.join()

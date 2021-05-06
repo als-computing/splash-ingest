@@ -247,7 +247,7 @@ def ingest(submitter: str, job: Job, thumbs_root=None, scicat_baseurl=None, scic
                 bluesky_context.serializer(name, document)
         logger.info(f"{job.id} databroker ingestion complete")
         issues: list[Issue] = doc_generator.issues
-        if IngestType.scicat_databroker in job.ingest_types:
+        if IngestType.scicat in job.ingest_types:
             logger.info(f"{job.id} scicat ingestion starting")
             scicat_ingestor = ScicatIngestor(
                 issues,

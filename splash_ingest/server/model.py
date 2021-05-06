@@ -13,7 +13,7 @@ class RevisionStamp(BaseModel):
 
 class IngestType(str, Enum):
     databroker = 'databroker'
-    scicat_databroker = 'scicat_databroker'
+    scicat = 'scicat'
 
 
 class JobStatus(str, Enum):

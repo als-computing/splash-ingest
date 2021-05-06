@@ -1,5 +1,4 @@
 import datetime
-import json
 import h5py
 import pytest
 from mongomock import MongoClient
@@ -101,7 +100,7 @@ def sample_file(tmp_path):
     file.close()
 
 
-def test_ingest(sample_file, init_mongomock):
+def test_ingest_databroker(sample_file, init_mongomock):
     mapping = Mapping(**mapping_dict)
     create_mapping("slartibartfast", mapping)
     mapping = find_mapping("slartibartfast", "magrathia")
@@ -117,6 +116,31 @@ def test_ingest(sample_file, init_mongomock):
     assert job.status == JobStatus.successful, f'injest completed  {job.status_history[-1]}'
     assert bluesky_context.db['run_start'].find_one({"uid": start_uid}) is not None, "job wrote start doc"
 
+
+# def test_ingest_types(sample_file, init_mongomock,  monkeypatch):
+#     from suitcase.mongo_normalized import Serializer
+    
+#     class MockSerializer(Serializer):
+#         def __call__(self, name, doc):
+#             return super().__call__(name, doc)
+
+#     def db_call(name, doc):
+#         print(name, doc)
+#     databroker_db = MongoClient().databroker_db
+    
+#     # serializer = MockSerializer(metadatastore_db=databroker_db, asset_registry_db=databroker_db)
+#     monkeypatch.setattr("suitcase.mongo_normalized", "Serializer", MockSerializer)
+#     serializer("start", {})
+#     # mapping = Mapping(**mapping_dict)
+#     # create_mapping("slartibartfast", mapping)
+#     # mapping = find_mapping("slartibartfast", "magrathia")
+#     # assert mapping.resource_spec == "MultiKeySlice", "test a field"
+#     # job = create_job(
+#     #     "user1",
+#     #     sample_file.filename,
+#     #     "magrathia",
+#     #     [IngestType.databroker])
+#     # start_uid = ingest("slartibartfast", job)
 
 
 mapping_dict = {

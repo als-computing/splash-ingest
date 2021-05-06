@@ -116,16 +116,6 @@ def test_ingest_databroker(sample_file, init_mongomock):
     assert job.status == JobStatus.successful, f'injest completed  {job.status_history[-1]}'
     assert bluesky_context.db['run_start'].find_one({"uid": start_uid}) is not None, "job wrote start doc"
 
-    job = create_job(
-        "user1",
-        sample_file.filename,
-        "magrathia",
-        [IngestType.scicat, IngestType.databroker])
-    start_uid = ingest("slartibartfast", job)
-    job = find_job(job.id)
-    assert job is not None
-    assert job.status == JobStatus.successful, f'injest completed  {job.status_history[-1]}'
-    assert bluesky_context.db['run_start'].find_one({"uid": start_uid}) is not None, "job wrote start doc"
 
 # def test_ingest_types(sample_file, init_mongomock,  monkeypatch):
 #     from suitcase.mongo_normalized import Serializer

@@ -101,7 +101,7 @@ class CreateJobResponse(BaseModel):
     job_id: Optional[str] = Field(description="uid of newly created job, if created")
 
 
-@app.post("/api/ingest/jobs", tags=['ingest_jobs'])
+@app.post("/api/ingest/jobs", tags=['ingest_jobs'], response_description="Returns information about the status of creating the Job")
 async def submit_job(request: CreateJobRequest, api_key: APIKey = Depends(get_api_key_from_request)) \
          -> CreateJobResponse:
     client_key: APIKey = verify_api_key(api_key)
@@ -117,7 +117,7 @@ async def submit_job(request: CreateJobRequest, api_key: APIKey = Depends(get_ap
     return CreateJobResponse(message="success", job_id=job.id)
   
 
-@app.get("/api/ingest/jobs/{job_id}", tags=['ingest_jobs'])
+@app.get("/api/ingest/jobs/{job_id}", tags=['ingest_jobs'], response_model=Job, response_description="Returns the requested Job")
 async def get_job(job_id: str, api_key: APIKey = Depends(get_api_key_from_request)) -> Job:
     try:
         client_key: APIKey = verify_api_key(api_key)
@@ -133,8 +133,8 @@ async def get_job(job_id: str, api_key: APIKey = Depends(get_api_key_from_reques
         raise e
 
 
-@app.get("/api/ingest/jobs", tags=['ingest_jobs'])
-async def get_unstarted_jobs(api_key: APIKey = Depends(get_api_key_from_request)) -> Job:
+@app.get("/api/ingest/jobs", tags=['ingest_jobs'], response_model=List[Job], response_description="Returns all Jobs waiting to be started")
+async def get_unstarted_jobs(api_key: APIKey = Depends(get_api_key_from_request)) -> List[Job]:
     try:
         client_key: APIKey = verify_api_key(api_key)
         if not client_key:
@@ -152,7 +152,7 @@ class CreateMappingResponse(BaseModel):
     message: str
 
 
-@app.post("/api/ingest/mappings", tags=['mappings'])
+@app.post("/api/ingest/mappings", tags=['mappings'],response_model=CreateMappingResponse, response_description="Information about the creation of the Mapping")
 async def insert_mapping(mapping: Mapping, 
                          api_key: APIKey = Depends(get_api_key_from_request)) -> CreateMappingResponse:
     try:
@@ -167,7 +167,7 @@ async def insert_mapping(mapping: Mapping,
         raise e
 
 
-@app.get("/api/ingest/mappings/{mapping_id}", tags=['mappings'])
+@app.get("/api/ingest/mappings/{mapping_id}", tags=['mappings'], response_model=Mapping, response_description="Return a Mapping")
 async def get_mapping(mapping_id: str, api_key: APIKey = Depends(get_api_key_from_request)) -> Mapping:
     try:
         client_key: APIKey = verify_api_key(api_key)

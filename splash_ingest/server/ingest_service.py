@@ -160,6 +160,7 @@ def poll_for_new_jobs(
     scicat_baseurl,
     scicat_user,
     scicat_password,
+    terminate_requested,
     thumbs_root=None
 ):
 
@@ -167,6 +168,9 @@ def poll_for_new_jobs(
     while True:
         try:
             job_list = find_unstarted_jobs()
+            if terminate_requested.state:
+                logger.info("Terminate requested, exiting")
+                return
             if len(job_list) == 0:
                 time.sleep(sleep_interval)
             else:

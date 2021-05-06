@@ -1,4 +1,6 @@
 import logging
+import signal
+import threading
 
 from pymongo import MongoClient
 from starlette.config import Config
@@ -19,6 +21,8 @@ SCICAT_INGEST_USER = config("SCICAT_INGEST_USER", cast=str, default="ingest")
 SCICAT_INGEST_PASSWORD = config("SCICAT_INGEST_PASSWORD", cast=str, default="aman")
 
 logger = logging.getLogger("splash_ingest")
+
+
 def init_logging():
     ch = logging.StreamHandler()
     ch.setLevel(INGEST_LOG_LEVEL)
@@ -48,10 +52,29 @@ databroker_db = MongoClient(DATABROKER_DB_URI)[DATABROKER_DB_NAME]
 ingest_db = MongoClient(INGEST_DB_URI)[INGEST_DB_NAME]
 
 init_ingest_service(ingest_db, databroker_db)
+
+
+class TerminateRequested():
+    state = False
+
+
+terminate_requested = TerminateRequested
+
 poll_for_new_jobs(
     POLLER_SLEEP_SECONDS,
     SCICAT_BASEURL,
     SCICAT_INGEST_USER,
     SCICAT_INGEST_PASSWORD,
+    terminate_requested,
     THUMBS_ROOT
 )
+
+
+def sigterm_handler(signum, frame):
+    logger.info("sigterm received")
+    terminate_requested.state = True
+
+
+signal.signal(signal.SIGTERM, sigterm_handler)
+
+threading.Thread(poll_for_new_jobs)

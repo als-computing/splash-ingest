@@ -221,7 +221,7 @@ def ingest(submitter: str, job: Job, thumbs_root=None, scicat_baseurl=None, scic
         mapping_with_revision = find_mapping(submitter, job.mapping_id)
 
         if mapping_with_revision is None:
-            job_log = f"{job.id} no mapping found for {job.mapping_id.name} {job.mapping_id.version}"
+            job_log = f"{job.id} no mapping found for {job.mapping_id}"
             logger.info(job_log)
             set_job_status(job.id, StatusItem(time=datetime.utcnow(),
                            status=JobStatus.error, submitter=submitter, log=job_log))

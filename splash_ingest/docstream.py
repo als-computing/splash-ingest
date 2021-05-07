@@ -155,8 +155,7 @@ class MappedH5Generator():
         self._issues.append(Issue(stage="gen_docsteram", msg=message, exception=exception))
 
     def _process_stream(self, stream_name, resource_doc):
-        if can_debug:
-            logger.debug(f"run: Creating stream: {stream_name}")
+        logger.debug(f"run: Creating stream: {stream_name}")
         stream_timestamp_field = self._mapping.stream_mappings[stream_name].time_stamp
         stream_mapping = self._mapping.stream_mappings[stream_name]
 
@@ -247,11 +246,12 @@ class MappedH5Generator():
                 yield 'event', event
 
         if self._pack_pages:
+            logger.debug(f"packing pages: {stream_name}")
             if len(self._events) > 0:
                 yield "event_page", event_model.pack_event_page(*self._events)
             if len(self._datums) > 0:
                 yield "datum_page", event_model.pack_datum_page(*self._datums)
-
+        logger.debug(f"finished creating stream: {stream_name}")
 
 
     def _build_thumbnail(self, uid, directory, data):
@@ -273,6 +273,7 @@ class MappedH5Generator():
         return file
 
     def _extract_metadata(self):
+        logger.debug("beginning  _extract_metadata")
         metadata = {}
         for mapping in self._mapping.md_mappings:
             # event_model won't accept / in metadata keys, so
@@ -283,9 +284,11 @@ class MappedH5Generator():
             except Exception as e:
                 self._add_issue(f"Error finding run_start mapping {mapping.field}", e)
                 continue
+        logger.debug("leaving  _extract_metadata")
         return metadata
 
     def _extract_stream_descriptor_keys(self, stream_mapping: StreamMapping):
+        logger.debug("beginning  _extract_stream_descriptor_keys")
         descriptors = {}
         for mapping_field in stream_mapping:
             # build an event_model descriptor
@@ -307,6 +310,7 @@ class MappedH5Generator():
 
             encoded_key = encode_key(mapping_field.field)
             descriptors[encoded_key] = descriptor
+        logger.debug("leaving  _extract_stream_descriptor_keys")
         return descriptors
 
 
@@ -318,7 +322,7 @@ class MappedH5Generator():
         configuration_mapping : ConfigurationMapping
             [description]
         """
-     
+        logger.debug("beginning  _extract_stream_configuration")
         confguration = {}
         if configuration_mapping is None:
             return confguration
@@ -350,7 +354,7 @@ class MappedH5Generator():
                 # device_config['timestamps']['field'] = 
                 device_config['data_keys'][encoded_key] = data_keys
             confguration[conf_mapping.device] = device_config
-
+        logger.debug("leaving  _extract_stream_configuration")
         return confguration
 
     def _get_dataset_value(self, data_set):
@@ -367,6 +371,7 @@ class MappedH5Generator():
         except Exception as e:
             self._add_issue(f"error extracting field {data_set.name}", e)
             return None
+
 
 def encode_key(key):
     return key.replace("/", ":")

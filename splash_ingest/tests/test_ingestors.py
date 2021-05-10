@@ -30,7 +30,7 @@ mapping_dict = {
         ],
         "stream_mappings": {
             "primary": {
-                "thumbnails": 1,
+                "thumbnail_info": {"number": 1, "field": "/exchange/data"},
                 "time_stamp": "/process/acquisition/time_stamp",
                 "conf_mappings": [
                         {"device": "all",

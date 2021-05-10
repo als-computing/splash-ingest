@@ -1,191 +1,191 @@
-{
-    "name": "als832_dx_2",
-    "description": "string",
-    "version": "string",
-    "resource_spec": "MultiKeySlice",
-    "md_mappings": [
-        {
-            "field": "/measurement/sample/file_name",
-            "description": null
-        },
-        {
-            "field": "/measurement/instrument/instrument_name",
-            "description": null
-        },
-        {
-            "field": "/measurement/instrument/source/beamline",
-            "description": null
-        },
-        {
-            "field": "/measurement/instrument/source/source_name",
-            "description": null
-        },
-        {
-            "field": "/process/acquisition/start_date",
-            "description": null
-        },
-        {
-            "field": "/measurement/sample/experiment/proposal",
-            "description": null
-        },
-        {
-            "field": "/measurement/sample/experiment/title",
-            "description": null
-        },
-        {
-            "field": "/measurement/sample/experimenter/name",
-            "description": null
-        },
-        {
-            "field": "/measurement/sample/experiment/pi",
-            "description": null
-        },
-        {
-            "field": "/measurement/sample/uuid",
-            "description": null
-        },
-        {
-            "field": "/process/acquisition/start_date"
-        }
-
-    ],
-    "stream_mappings": {
-    "primary": {
-        "time_stamp": "/process/acquisition/image_date",
-        "thumbnails": 1,
-        "conf_mappings":
-            [
-                {"device": "all",
-                "mapping_fields": [
-                    {"field": "/measurement/instrument/detector/dark_field_value"},
-                    {"field": "/measurement/instrument/attenuator/setup/filter_y"},
-                    {"field": "/measurement/instrument/slits/setup/hslits_A_Door"},
-                    {"field": "/measurement/instrument/slits/setup/hslits_A_Wall"},
-                    {"field": "/measurement/instrument/slits/setup/hslits_center"},
-                    {"field": "/measurement/instrument/slits/setup/hslits_size"},
-                    {"field": "/measurement/instrument/slits/setup/vslits_Lead_Flag"},
-                    {"field": "/measurement/instrument/monochromator/setup/temperature_tc2"},
-                    {"field": "/measurement/instrument/monochromator/setup/temperature_tc3"},
-                    {"field": "/measurement/instrument/monochromator/setup/Z2"}, 
-                    {"field": "/process/acquisition/rotation/range"},
-                    {"field": "/process/acquisition/rotation/blur_limit"},
-                    {"field": "/process/acquisition/rotation/blur_limit"},
-                    {"field": "/measurement/instrument/detector/model"},
-                    {"field": "/measurement/instrument/detector/temperature"},
-                    {"field": "/process/acquisition/dark_fields/dark_num_avg_of"},
-                    {"field": "/process/acquisition/description_1"},
-                    {"field": "/process/acquisition/flat_fields/i0cycle"},
-                    {"field": "/process/acquisition/flat_fields/i0_move_x"},
-                    {"field": "/process/acquisition/flat_fields/i0_move_y"},
-                    {"field": "/measurement/instrument/detection_system/objective/camera_objective"},
-                    {"field": "/process/acquisition/rotation/multiRev"},
-                    {"field": "/process/acquisition/rotation/num_angles"},
-                    {"field": "/process/acquisition/rotation/nhalfCir"},
-                    {"field": "/measurement/instrument/detector/dimension_x"},
-                    {"field": "/measurement/instrument/detector/dimension_y"},
-                    {"field": "/process/acquisition/flat_fields/num_flat_fields"},
-                    {"field": "/process/acquisition/dark_fields/num_dark_fields"},
-                    {"field": "/measurement/instrument/detector/delay_time"},
-                    {"field": "/process/acquisition/name"},
-                    {"field": "/measurement/instrument/detector/pixel_size"},
-                    {"field": "/measurement/instrument/source/source_name"},
-                    {"field": "/measurement/instrument/detection_system/scintillator/scintillator_type"},
-                    {"field": "/process/acquisition/mosaic/tile_xmovedist"},
-                    {"field": "/process/acquisition/mosaic/tile_xnumimg"},
-                    {"field": "/process/acquisition/mosaic/tile_xorig"},
-                    {"field": "/process/acquisition/mosaic/tile_xoverlap"},
-                    {"field": "/process/acquisition/mosaic/tile_ymovedist"},
-                    {"field": "/process/acquisition/mosaic/tile_ynumimg"},
-                    {"field": "/process/acquisition/mosaic/tile_yorig"},
-                    {"field": "/process/acquisition/mosaic/tile_yoverlap"},
-                    {"field": "/measurement/instrument/camera_motor_stack/setup/tilt_motor"},
-                    {"field": "/process/acquisition/flat_fields/usebrightexpose"},
-                    {"field": "/measurement/instrument/detector/binning_x"},
-                    {"field": "/measurement/instrument/detector/binning_y"}
-
-                ]
-            }
-        ],
-        "mapping_fields": [
-            {"field": "/exchange/data", "external": true},
-            {"field": "/measurement/instrument/sample_motor_stack/setup/axis1pos"},
-            {"field": "/measurement/instrument/sample_motor_stack/setup/axis2pos"},
-            {"field": "/measurement/instrument/sample_motor_stack/setup/sample_x"},
-            {"field": "/measurement/instrument/sample_motor_stack/setup/axis5pos"},
-            {"field": "/measurement/instrument/camera_motor_stack/setup/camera_elevation"},
-            {"field": "/measurement/instrument/source/current"},
-            {"field": "/measurement/instrument/camera_motor_stack/setup/camera_distance"},
-            {"field": "/measurement/instrument/source/beam_intensity_incident"},
-            {"field": "/measurement/instrument/monochromator/energy"},
-            {"field": "/measurement/instrument/detector/exposure_time"},
-            {"field": "/measurement/instrument/source/current"},
-            {"field": "/measurement/instrument/time_stamp"},
-            {"field": "/measurement/instrument/monochromator/setup/turret2"},
-            {"field": "/measurement/instrument/monochromator/setup/turret1"},
-            {"field": "/measurement/instrument/camera_motor_stack/setup/camera_elevation"},
-            {"field": "/measurement/instrument/detector/exposure_time"}
-    ]}
-},
-"projections": [
     {
-    "name": "dx_app",
-    "configuration": {
-        "intent": "app"
+        "name": "als832_dx_3",
+        "description": "string",
+        "version": "string",
+        "resource_spec": "MultiKeySlice",
+        "md_mappings": [
+            {
+                "field": "/measurement/sample/file_name",
+                "description": null
+            },
+            {
+                "field": "/measurement/instrument/instrument_name",
+                "description": null
+            },
+            {
+                "field": "/measurement/instrument/source/beamline",
+                "description": null
+            },
+            {
+                "field": "/measurement/instrument/source/source_name",
+                "description": null
+            },
+            {
+                "field": "/process/acquisition/start_date",
+                "description": null
+            },
+            {
+                "field": "/measurement/sample/experiment/proposal",
+                "description": null
+            },
+            {
+                "field": "/measurement/sample/experiment/title",
+                "description": null
+            },
+            {
+                "field": "/measurement/sample/experimenter/name",
+                "description": null
+            },
+            {
+                "field": "/measurement/sample/experiment/pi",
+                "description": null
+            },
+            {
+                "field": "/measurement/sample/uuid",
+                "description": null
+            },
+            {
+                "field": "/process/acquisition/start_date"
+            }
+
+        ],
+        "stream_mappings": {
+        "primary": {
+            "time_stamp": "/process/acquisition/image_date",
+            "thumbnail_info": {"number": 1, "field": "/exchange/data"},
+            "conf_mappings":
+                [
+                    {"device": "all",
+                    "mapping_fields": [
+                        {"field": "/measurement/instrument/detector/dark_field_value"},
+                        {"field": "/measurement/instrument/attenuator/setup/filter_y"},
+                        {"field": "/measurement/instrument/slits/setup/hslits_A_Door"},
+                        {"field": "/measurement/instrument/slits/setup/hslits_A_Wall"},
+                        {"field": "/measurement/instrument/slits/setup/hslits_center"},
+                        {"field": "/measurement/instrument/slits/setup/hslits_size"},
+                        {"field": "/measurement/instrument/slits/setup/vslits_Lead_Flag"},
+                        {"field": "/measurement/instrument/monochromator/setup/temperature_tc2"},
+                        {"field": "/measurement/instrument/monochromator/setup/temperature_tc3"},
+                        {"field": "/measurement/instrument/monochromator/setup/Z2"}, 
+                        {"field": "/process/acquisition/rotation/range"},
+                        {"field": "/process/acquisition/rotation/blur_limit"},
+                        {"field": "/process/acquisition/rotation/blur_limit"},
+                        {"field": "/measurement/instrument/detector/model"},
+                        {"field": "/measurement/instrument/detector/temperature"},
+                        {"field": "/process/acquisition/dark_fields/dark_num_avg_of"},
+                        {"field": "/process/acquisition/description_1"},
+                        {"field": "/process/acquisition/flat_fields/i0cycle"},
+                        {"field": "/process/acquisition/flat_fields/i0_move_x"},
+                        {"field": "/process/acquisition/flat_fields/i0_move_y"},
+                        {"field": "/measurement/instrument/detection_system/objective/camera_objective"},
+                        {"field": "/process/acquisition/rotation/multiRev"},
+                        {"field": "/process/acquisition/rotation/num_angles"},
+                        {"field": "/process/acquisition/rotation/nhalfCir"},
+                        {"field": "/measurement/instrument/detector/dimension_x"},
+                        {"field": "/measurement/instrument/detector/dimension_y"},
+                        {"field": "/process/acquisition/flat_fields/num_flat_fields"},
+                        {"field": "/process/acquisition/dark_fields/num_dark_fields"},
+                        {"field": "/measurement/instrument/detector/delay_time"},
+                        {"field": "/process/acquisition/name"},
+                        {"field": "/measurement/instrument/detector/pixel_size"},
+                        {"field": "/measurement/instrument/source/source_name"},
+                        {"field": "/measurement/instrument/detection_system/scintillator/scintillator_type"},
+                        {"field": "/process/acquisition/mosaic/tile_xmovedist"},
+                        {"field": "/process/acquisition/mosaic/tile_xnumimg"},
+                        {"field": "/process/acquisition/mosaic/tile_xorig"},
+                        {"field": "/process/acquisition/mosaic/tile_xoverlap"},
+                        {"field": "/process/acquisition/mosaic/tile_ymovedist"},
+                        {"field": "/process/acquisition/mosaic/tile_ynumimg"},
+                        {"field": "/process/acquisition/mosaic/tile_yorig"},
+                        {"field": "/process/acquisition/mosaic/tile_yoverlap"},
+                        {"field": "/measurement/instrument/camera_motor_stack/setup/tilt_motor"},
+                        {"field": "/process/acquisition/flat_fields/usebrightexpose"},
+                        {"field": "/measurement/instrument/detector/binning_x"},
+                        {"field": "/measurement/instrument/detector/binning_y"}
+
+                    ]
+                }
+            ],
+            "mapping_fields": [
+                {"field": "/exchange/data", "external": true},
+                {"field": "/measurement/instrument/sample_motor_stack/setup/axis1pos"},
+                {"field": "/measurement/instrument/sample_motor_stack/setup/axis2pos"},
+                {"field": "/measurement/instrument/sample_motor_stack/setup/sample_x"},
+                {"field": "/measurement/instrument/sample_motor_stack/setup/axis5pos"},
+                {"field": "/measurement/instrument/camera_motor_stack/setup/camera_elevation"},
+                {"field": "/measurement/instrument/source/current"},
+                {"field": "/measurement/instrument/camera_motor_stack/setup/camera_distance"},
+                {"field": "/measurement/instrument/source/beam_intensity_incident"},
+                {"field": "/measurement/instrument/monochromator/energy"},
+                {"field": "/measurement/instrument/detector/exposure_time"},
+                {"field": "/measurement/instrument/source/current"},
+                {"field": "/measurement/instrument/time_stamp"},
+                {"field": "/measurement/instrument/monochromator/setup/turret2"},
+                {"field": "/measurement/instrument/monochromator/setup/turret1"},
+                {"field": "/measurement/instrument/camera_motor_stack/setup/camera_elevation"},
+                {"field": "/measurement/instrument/detector/exposure_time"}
+        ]}
     },
-    "projection": {
-            "image_data": {
-            "type": "linked",
-            "location": "event",
-            "stream": "primary",
-            "field": ":exchange:data"
-        },  
-        "sample_name": {
-            "type": "configuration",
-            "field": ":measurement:sample:file_name",
-            "location": "start"
+    "projections": [
+        {
+        "name": "dx_app",
+        "configuration": {
+            "intent": "app"
         },
-        "sample_id": {
-            "type": "configuration",
-            "field": ":measurement:sample:uuid",
-            "location": "start"
-        },
-        "instrument_name": {
-            "type": "configuration",
-            "field": ":measurement:instrument:name",
-            "location": "start"
-        },
-        "beamline": {
-            "type": "configuration",
-            "field": ":measurement:instrument:source:beamline",
-            "location": "start"
-        },
-        "collection_date": {
-            "type": "configuration",
-            "field": ":process:acquisition:start_date",
-            "location": "start"
-        },
-        "proposal": {
-            "type": "configuration",
-            "field": ":measurement:sample:experiment:proposal",
-            "location": "start"
-        },
-        "experiment_title": {
-            "type": "configuration",
-            "field": ":measurement:sample:experiment:title",
-            "location": "start"
-        },
-        "experimenter_name": {
-            "type": "configuration",
-            "field": ":measurement:sample:experimenter:name",
-            "location": "start"
-        },
-        "pi_name": {
-            "type": "configuration",
-            "field": ":measurement:sample:experiment:pi",
-            "location": "start"
+        "projection": {
+                "image_data": {
+                "type": "linked",
+                "location": "event",
+                "stream": "primary",
+                "field": ":exchange:data"
+            },  
+            "sample_name": {
+                "type": "configuration",
+                "field": ":measurement:sample:file_name",
+                "location": "start"
+            },
+            "sample_id": {
+                "type": "configuration",
+                "field": ":measurement:sample:uuid",
+                "location": "start"
+            },
+            "instrument_name": {
+                "type": "configuration",
+                "field": ":measurement:instrument:name",
+                "location": "start"
+            },
+            "beamline": {
+                "type": "configuration",
+                "field": ":measurement:instrument:source:beamline",
+                "location": "start"
+            },
+            "collection_date": {
+                "type": "configuration",
+                "field": ":process:acquisition:start_date",
+                "location": "start"
+            },
+            "proposal": {
+                "type": "configuration",
+                "field": ":measurement:sample:experiment:proposal",
+                "location": "start"
+            },
+            "experiment_title": {
+                "type": "configuration",
+                "field": ":measurement:sample:experiment:title",
+                "location": "start"
+            },
+            "experimenter_name": {
+                "type": "configuration",
+                "field": ":measurement:sample:experimenter:name",
+                "location": "start"
+            },
+            "pi_name": {
+                "type": "configuration",
+                "field": ":measurement:sample:experiment:pi",
+                "location": "start"
+            }
+            
         }
-        
+        }
+    ]
     }
-    }
-]
-}

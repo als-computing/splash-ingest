@@ -2,7 +2,7 @@ from typing import Dict, List, Optional, Union
 
 from pydantic import BaseModel, Field
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 
 class MappingField(BaseModel):
@@ -16,14 +16,19 @@ class ConfigurationMapping(BaseModel):
 
 
 class StreamMappingField(MappingField):
-    external: Optional[bool] = Field(default=False, title="Indicates whether field will be represented in the event directly or from an external file")
+    external: Optional[bool] = Field(default=False, description="Indicates whether field will be represented in the event directly or from an external file")
+
+
+class ThumbnailInfo(BaseModel):
+    number: int = Field(default=1, title="number of thumbnails", description="Specifies the number of thumbnails to produce")
+    field: str = Field(title="thumbnail fields", description="Specifies the field to produce thumbails from")
 
 
 class StreamMapping(BaseModel):
     mapping_fields: List[StreamMappingField]
     time_stamp: str = Field(title='time_stamp field', description='field to use to get time stamp values')
     conf_mappings: Optional[List[ConfigurationMapping]] = Field(title="event descriptor confguration")
-    thumbnails: Optional[int] = Field(description="number of thumbnails to produce from stream")
+    thumbnail_info: Optional[ThumbnailInfo] = Field(description="information about thumnails to produce from stream")
 
 
 class Mapping(BaseModel):

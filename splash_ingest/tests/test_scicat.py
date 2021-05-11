@@ -4,7 +4,7 @@ import pytest
 # import requests
 import requests_mock
 
-from ..scicat import project_start_doc, ScicatIngestor
+from ..scicat import project_start_doc, ScicatIngestor, build_search_terms
 from ..model import Issue
 
 @pytest.fixture
@@ -57,12 +57,12 @@ def test_projected_start():
             "configuration": {
                  "intent": "test"
             }
-        },
-        {
-            "configuration": {
-                "intent": "test"
-            }
-        }]
+            },
+            {
+                "configuration": {
+                    "intent": "test"
+                }
+            }]
     }
 
     with pytest.raises(Exception):
@@ -84,6 +84,19 @@ def test_scicate_ingest(sample_file):
         scicat = ScicatIngestor(issues, host="localhost:3000")
         scicat.ingest_run(Path(sample_file.filename), start_doc, descriptor_doc)
         assert len(issues) == 0
+
+
+def test_build_search_terms():
+    terms = build_search_terms({"sample_name": "Time-is_an illusion.    Lunchtime/2x\\so."})
+    assert len(terms) == 7
+    assert "time" in terms
+    assert "is" in terms
+    assert "an" in terms
+    assert "illusion" in terms
+    assert "lunchtime" in terms
+    assert "2x" in terms
+    assert "so" in terms
+
 
 
 start_doc = {

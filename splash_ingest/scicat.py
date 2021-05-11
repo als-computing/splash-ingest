@@ -9,6 +9,7 @@ import base64
 import logging
 from pathlib import Path
 from pprint import pprint
+import re
 from typing import List
 
 import numpy as np
@@ -174,7 +175,7 @@ class ScicatIngestor():
 
 
 
-    def ingest_run(self, filepath, run_start,  descriptor_doc, thumbnail=None):
+    def ingest_run(self, filepath, run_start,  descriptor_doc, thumbnails=None):
         logger.info(f"{self.job_id} Scicat ingestion started for {filepath}")
         # get token
         try:
@@ -211,7 +212,12 @@ class ScicatIngestor():
             self._add_error(f"Error getting scientific metadata. Continuing without.", e)
 
         try:
-            self._create_raw_dataset(projected_start_doc, scientific_metadata, access_groups, owner_group, filepath, thumbnail)
+            self._create_raw_dataset(
+                projected_start_doc,
+                scientific_metadata,
+                access_groups, owner_group,
+                filepath,
+                thumbnails)
         except Exception as e:
             self._add_error("Error creating raw data set.", e)
 
@@ -237,7 +243,7 @@ class ScicatIngestor():
             raise ScicatCommError(f"Error creating Sample {err}")
 
 
-    def _create_raw_dataset(self, projected_start_doc, scientific_metadata, access_groups, owner_group, filepath, thumbnail):
+    def _create_raw_dataset(self, projected_start_doc, scientific_metadata, access_groups, owner_group, filepath, thumbnails):
         principalInvestigator = projected_start_doc.get('pi_name')
         if not principalInvestigator:
             principalInvestigator = "uknonwn"
@@ -267,7 +273,8 @@ class ScicatIngestor():
             "size": self._get_file_size(filepath),
             "scientificMetadata": scientific_metadata,
             "sampleId": projected_start_doc.get('sample_id'),
-            "isPublished": False
+            "isPublished": False,
+            "searchTerms": build_search_terms(projected_start_doc)
         }
         encoded_data = json.loads(json.dumps(data, cls=NPArrayEncoder))
 
@@ -280,13 +287,21 @@ class ScicatIngestor():
         new_pid = resp.json().get('pid')
         logger.info(f"{self.job_id} new dataset created {new_pid}")
         # upload thumbnail
-        if thumbnail and thumbnail.exists():
-            resp = self._addThumbnail(new_pid, thumbnail, datasetType="RawDatasets", owner_group=owner_group)
-            if resp.ok:
-                logger.info(f"{self.job_id} thumbnail created for {new_pid}")
-            else:
-                err = resp.json()["error"]
-                raise ScicatCommError(f"Error creating datablock. {err}", )
+        if thumbnails:
+            for thumbnail in thumbnails:
+                if thumbnail.exists():
+                    logger.info(f"Uploading thumbnail {thumbnail}")
+                    resp = self._addThumbnail(new_pid, thumbnail, datasetType="RawDatasets", owner_group=owner_group)
+                    logger.info(f"Thumnail written {thumbnail}")
+                    if resp.ok:
+                        logger.info(f"{self.job_id} thumbnail created for {new_pid}")
+                    else:
+                        err = resp.json()["error"]
+                        raise ScicatCommError(f"Error creating datablock. {err}", )
+                elif not thumbnail.exists():
+                    logger.info(f"Thumbnail {thumbnail} does not exist")
+        else:
+            logger.info("Thumbnails not specified")
         datasetType = "RawDatasets"
         dataBlock = {
             # "id": npid,
@@ -332,44 +347,6 @@ class ScicatIngestor():
         # timestamp = pathobj.lstat().st_mtime
         return str(datetime.fromtimestamp(pathobj.lstat().st_mtime))
 
-    # def _upload_bytes(self, pid=0, urlAdd=None, data=None, attachFile=None):
-    #     # upload the bits to the database
-    #     # try sending it...
-    #     if pid == 0:  # and not self.uploadType in ["samples"]:
-    #         logger.info("* * * * creating new entry")
-    #         url = self.baseurl + f"{urlAdd}/replaceOrCreate"
-    #         try:
-    #             resp = self._send_to_scicat(url, data)
-    #             resp_json = resp.json()
-    #             if not resp.ok:
-    #                 raise ScicatCommError("error creating ")
-    #             if "pid" in resp_json:
-    #                 npid = resp_json["pid"]
-    #             elif "id" in resp_json:
-    #                 npid = resp_json["id"]
-    #             elif "proposalId" in resp_json:
-    #                 npid = resp_json["proposalId"]
-    #         except Exception as e:
-    #             self._add_error("could not upload bytes", e)
-
-    #     elif pid != 0:  # and not adict["uploadType"] in ["samples"]:
-    #         logger.info("* * * * updating existing entry")
-    #         url = self.baseurl + f"{urlAdd}/{urllib.parse.quote_plus(pid)}"
-    #         resp = self._send_to_scicat(url, data, "patch").json()
-    #         npid = pid
-
-    #     if attachFile is not None:
-    #         # attach an additional file as "thumbnail"
-    #         assert isinstance(attachFile, Path), 'attachFile must be an instance of pathlib.Path'
-
-    #         if attachFile.exists():
-    #             logger.info("attaching thumbnail {} to {} \n".format(attachFile, npid))
-    #             urlAddThumbnail = urlAdd
-    #             if urlAdd == "DerivedDatasets":
-    #                 urlAddThumbnail = "datasets"  # workaround for scicat inconsistency
-    #             resp = self._addThumbnail(npid, attachFile, datasetType=urlAddThumbnail)
-    #             logger.info(f"uploaded thumbnail for {npid}")
-    #     return npid
 
     def _addThumbnail(self, datasetId=None, filename=None, datasetType="RawDatasets", owner_group=None):
 
@@ -431,7 +408,6 @@ def gen_ev_docs(scm: ScicatIngestor, filename: str, mapping_file: str):
             else:
                 continue
         pprint(ingestor.issues)
-        # descriptor.map()
         scm.ingest_run(Path(filename), start_doc, descriptor_doc=descriptor, thumbnail=ingestor.thumbnails[0])
 
 
@@ -454,6 +430,11 @@ def project_start_doc(start_doc, intent):
             projected_doc[field] = start_doc.get(value['field'])
     return projected_doc
 
+
+def build_search_terms(projected_start):
+    ''' exctract search terms from sample name to provide something pleasing to search on '''
+    terms = re.split('[^a-zA-Z0-9]', projected_start.get('sample_name'))
+    return [term.lower() for term in terms if len(term) > 0]
 
 if __name__ == "__main__":
     ch = logging.StreamHandler()

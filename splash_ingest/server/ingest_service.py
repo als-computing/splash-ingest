@@ -255,7 +255,11 @@ def ingest(submitter: str, job: Job, thumbs_root=None, scicat_baseurl=None, scic
                 username=scicat_user,
                 password=scicat_password,
                 job_id=job.id)
-            scicat_ingestor.ingest_run(Path(job.document_path), start_doc, descriptor_doc)
+            scicat_ingestor.ingest_run(
+                Path(job.document_path),
+                start_doc,
+                descriptor_doc,
+                thumbnails=doc_generator.thumbnails)
             logger.info(f"{job.id} scicat ingestion complete")
         job_log = f'ingested start doc: {start_uid}'
         if issues and len(issues) > 0:

@@ -200,6 +200,7 @@ class MappedH5Generator():
                     self._run_bundle.start_doc['uid'],
                     self._thumbs_root,
                     stream_mapping.thumbnail_info)
+                logger.info(f"created thumbnail {file}")
                 self._thumbnails.append(file)
             except Exception as e:
                 self._add_issue("Error producing  thumbnail", e)
@@ -413,11 +414,6 @@ def create_event(file, stream_name, timestamp, stream_mapping, resource_doc, str
             if can_debug:
                 logger.debug(f'event for {field.external} inserted in event')
             event_data[encoded_key] = dataset[event_num]
-    
-        # if (stream_mapping.thumbnails and stream_mapping.thumbnails > 0
-        #     and self._thumbs_root is not None and len(dataset.shape) == 3):
-        #     file = self._build_thumbnail(self._run_bundle.start_doc['uid'], self._thumbs_root, dataset)
-        #     self._thumbnails.append(file)
 
     event = stream_bundle.compose_event(
         data=event_data,

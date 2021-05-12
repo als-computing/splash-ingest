@@ -353,6 +353,7 @@ class MappedH5Generator():
         return confguration
 
     def _get_dataset_value(self, data_set):
+        logger.debug(f"{data_set}  {data_set.dtype}")
         try:
             if "S" in data_set.dtype.str:
                 if data_set.shape == (1,):
@@ -362,7 +363,9 @@ class MappedH5Generator():
                 else:
                     return list(data_set.asstr())
             else:
+                logger.debug(f"{data_set}  {data_set[()]}")
                 return data_set[()]
+                
         except Exception as e:
             self._add_issue(f"error extracting field {data_set.name}", e)
             return None

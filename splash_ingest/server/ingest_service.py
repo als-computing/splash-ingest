@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
+import json
 import logging
 from pathlib import Path
 import sys
@@ -9,6 +10,7 @@ import traceback
 from uuid import uuid4
 
 import h5py
+import pandas as pd
 from pydantic import parse_obj_as
 from pymongo import MongoClient
 from pymongo.collection import Collection
@@ -237,12 +239,15 @@ def ingest(submitter: str, job: Job, thumbs_root=None, scicat_baseurl=None, scic
         start_uid = None
         start_doc = {}
         descriptor_doc = {}
+        event_sample = {}
         for name, document in doc_generator.generate_docstream():
             if name == 'start':
                 start_uid = document['uid']
                 start_doc = document
             if name == 'descriptor':
                 descriptor_doc = document
+            if name == 'event_page':
+                event_sample = sample_event_page(document)
             if IngestType.databroker in job.ingest_types:
                 try:
                     bluesky_context.serializer(name, document)
@@ -263,6 +268,7 @@ def ingest(submitter: str, job: Job, thumbs_root=None, scicat_baseurl=None, scic
                 Path(job.document_path),
                 start_doc,
                 descriptor_doc,
+                event_sample=event_sample,
                 thumbnails=doc_generator.thumbnails)
             logger.info(f"{job.id} scicat ingestion complete")
         job_log = f'ingested start doc: {start_uid}'
@@ -283,3 +289,13 @@ def ingest(submitter: str, job: Job, thumbs_root=None, scicat_baseurl=None, scic
         job_log = traceback.format_exception(exc_type, exc_value, exc_tb)
         status = StatusItem(time=datetime.utcnow(), status=JobStatus.error, submitter=submitter, log=str(job_log))
         set_job_status(job.id, status)
+
+
+def sample_event_page(event_page, sample_size=10):
+    df = pd.DataFrame(data=event_page['data'])
+    if len(df) == 0:
+        return {}
+    step = len(df) // sample_size
+    if step == 0:
+        step == 1
+    return json.loads(df[0:: step].to_json())

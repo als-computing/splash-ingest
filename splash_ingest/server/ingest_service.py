@@ -293,6 +293,7 @@ def ingest(submitter: str, job: Job, thumbs_root=None, scicat_baseurl=None, scic
 
 def sample_event_page(event_page, sample_size=10):
     df = pd.DataFrame(data=event_page['data'])
+    df = df.rename(columns=lambda s: s.replace(":", "/"))
     if len(df) == 0:
         return {}
     step = len(df) // sample_size

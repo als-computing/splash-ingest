@@ -274,7 +274,7 @@ class ScicatIngestor():
             "scientificMetadata": scientific_metadata,
             "sampleId": projected_start_doc.get('sample_id'),
             "isPublished": False,
-            "searchTerms": build_search_terms(projected_start_doc)
+            "description": build_search_terms(projected_start_doc)
         }
         encoded_data = json.loads(json.dumps(data, cls=NPArrayEncoder))
 
@@ -434,7 +434,10 @@ def project_start_doc(start_doc, intent):
 def build_search_terms(projected_start):
     ''' exctract search terms from sample name to provide something pleasing to search on '''
     terms = re.split('[^a-zA-Z0-9]', projected_start.get('sample_name'))
-    return [term.lower() for term in terms if len(term) > 0]
+    description = [term.lower() for term in terms if len(term) > 0]
+    return ' '.join(description)
+
+    # return "  ".join(re.sub(r'[^A-Za-z0-9 ]+', ' ', projected_start.get('sample_name')).split());
 
 if __name__ == "__main__":
     ch = logging.StreamHandler()

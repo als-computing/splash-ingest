@@ -244,7 +244,11 @@ def ingest(submitter: str, job: Job, thumbs_root=None, scicat_baseurl=None, scic
             if name == 'descriptor':
                 descriptor_doc = document
             if IngestType.databroker in job.ingest_types:
-                bluesky_context.serializer(name, document)
+                try:
+                    bluesky_context.serializer(name, document)
+                except Exception as e:
+                    logger.error(f"Exception storing document {name}", e)
+                    raise e
         logger.info(f"{job.id} databroker ingestion complete")
         issues: list[Issue] = doc_generator.issues
         if IngestType.scicat in job.ingest_types:

@@ -175,7 +175,7 @@ class ScicatIngestor():
 
 
 
-    def ingest_run(self, filepath, run_start,  descriptor_doc, thumbnails=None):
+    def ingest_run(self, filepath, run_start,  descriptor_doc, event_sample=None, thumbnails=None):
         logger.info(f"{self.job_id} Scicat ingestion started for {filepath}")
         # get token
         try:
@@ -207,7 +207,7 @@ class ScicatIngestor():
             self._add_error(f"Error creating sample for {filepath}. Continuing without sample.", e)
         
         try:
-            scientific_metadata = self._extract_scientific_metadata(descriptor_doc)
+            scientific_metadata = self._extract_scientific_metadata(descriptor_doc, event_sample)
         except Exception as e:
             self._add_error(f"Error getting scientific metadata. Continuing without.", e)
 
@@ -337,9 +337,11 @@ class ScicatIngestor():
 
 
     @staticmethod
-    def _extract_scientific_metadata(descriptor):
-        retrun_dict = {k.replace(":", "/"): v for k, v in descriptor['configuration']['all']['data'].items()}
-        return retrun_dict
+    def _extract_scientific_metadata(descriptor, event_page):
+        return_dict = {k.replace(":", "/"): v for k, v in descriptor['configuration']['all']['data'].items()}
+        if event_page:
+            return_dict['data_sample'] = event_page
+        return return_dict
 
     @staticmethod
     def _get_file_mod_time(pathobj):

@@ -59,7 +59,7 @@ class MappedH5Generator():
 
 
     """
-    def __init__(self, mapping: Mapping, file, reference_root_name, pack_pages=True, data_groups=[], thumbs_root=None):
+    def __init__(self, mapping: Mapping, file, reference_root_name, pack_pages=True, data_groups=[], thumbs_root=None, single_event=True):
         """
 
         Parameters
@@ -85,6 +85,7 @@ class MappedH5Generator():
         self._issues: list[Issue] = []
         self._run_bundle = None
         self._pack_pages = pack_pages
+        self._single_event = single_event
         if self._pack_pages:
             self._events = []
             self._datums = []
@@ -205,37 +206,55 @@ class MappedH5Generator():
             except Exception as e:
                 self._add_issue("Error producing  thumbnail", e)
 
-        # produce documents for each event (event and datum)
-        for event_num in range(0, num_events):
+        if self._single_event:
             try:
-                time_stamp = time_stamp_dataset[event_num]
+                time_stamp = time_stamp_dataset[0]
             except Exception:
                 self._add_issue(f"Missing timestamp for"
-                                f"{stream_name} slice: {str(event_num)}")
-                continue
+                                f"{stream_name} slice: 0")
+            event, datum = create_singular_event(
+                    self._file,
+                    stream_name,
+                    time_stamp,
+                    stream_mapping,
+                    resource_doc,
+                    stream_bundle)
+            if datum:
+                yield "datum", datum
+            if event:
+                yield "event", event
+        else:
+            # produce documents for each event (event and datum)
+            for event_num in range(0, num_events):
+                try:
+                    time_stamp = time_stamp_dataset[event_num]
+                except Exception:
+                    self._add_issue(f"Missing timestamp for"
+                                    f"{stream_name} slice: {str(event_num)}")
+                    continue
 
-            event, datum = create_event(
-                self._file,
-                stream_name,
-                time_stamp,
-                stream_mapping,
-                resource_doc,
-                stream_bundle,
-                event_num)
+                event, datum = create_event(
+                    self._file,
+                    stream_name,
+                    time_stamp,
+                    stream_mapping,
+                    resource_doc,
+                    stream_bundle,
+                    event_num)
 
-            if can_debug:
-                logger.debug(f"Creating event with uid: {event['uid']}")
+                if can_debug:
+                    logger.debug(f"Creating event with uid: {event['uid']}")
 
-            if self._pack_pages:
-                logger.debug("event store")
-                self._events.append(event)
-                if datum:
-                    self._datums.append(datum)
-            else:
-                logger.debug("event yield")
-                yield 'event', event
-                if datum:
-                    yield 'datum', datum
+                if self._pack_pages:
+                    logger.debug("event store")
+                    self._events.append(event)
+                    if datum:
+                        self._datums.append(datum)
+                else:
+                    logger.debug("event yield")
+                    yield 'event', event
+                    if datum:
+                        yield 'datum', datum
 
         if self._pack_pages:
             logger.debug(f"packing pages: {stream_name}")
@@ -295,10 +314,16 @@ class MappedH5Generator():
             units = hdf5_dataset.attrs.get('units')
             if units is not None:
                 units = units.decode()
+            
+            if self._single_event:
+                shape = hdf5_dataset.shape
+            else:
+                shape=hdf5_dataset.shape[1::]
+
             descriptor = dict(
                     dtype='number',
                     source='file',
-                    shape=hdf5_dataset.shape[1::],
+                    shape=shape,
                     units=units)
             if mapping_field.external:
                 descriptor['external'] = 'FILESTORE:'
@@ -309,7 +334,7 @@ class MappedH5Generator():
         return descriptors
 
 
-    def _extract_stream_configuration(self, configuration_mapping: ConfigurationMapping, ):
+    def _extract_stream_configuration(self, configuration_mapping: ConfigurationMapping,):
         """Builds a single configuration object for the streams's event descriptor.
             https://blueskyproject.io/event-model/event-descriptors.html#configuration
         Parameters
@@ -339,17 +364,19 @@ class MappedH5Generator():
                 units = hdf5_dataset.attrs.get('units')
                 if units is not None:
                     units = units.decode()
+
                 data_keys = dict(
                         dtype='number',
                         source='file',
-                        shape=hdf5_dataset.shape[1::],
+                        shape=hdf5_dataset.shape,
                         units=units)
-                
                 device_config['data'][encoded_key] = self._get_dataset_value(hdf5_dataset)
                 # device_config['timestamps']['field'] = 
                 device_config['data_keys'][encoded_key] = data_keys
             confguration[conf_mapping.device] = device_config
         logger.debug("leaving  _extract_stream_configuration")
+        import pprint
+        pprint.pprint(confguration)
         return confguration
 
     def _get_dataset_value(self, data_set):
@@ -379,6 +406,37 @@ def decode_key(key):
     return key.replace(":", "/")
 
 
+def create_singular_event(file, stream_name, timestamp, stream_mapping, resource_doc, stream_bundle):
+    event_data = {}
+    filled_fields = {}
+    event_timestamps = {}
+    for field in stream_mapping.mapping_fields:
+        encoded_key = encode_key(field.field)
+        event_timestamps[encoded_key] = timestamp
+        # Go through each field in the stream. If field not marked
+        # as external, extract the value. Otherwise create a datum
+        try:
+            dataset = file[field.field]
+        except Exception as e:
+            # self._add_issue(f"Error finding event mapping {field.field}", e)
+            return
+        if field.external:
+           
+            datum = resource_doc.compose_datum(datum_kwargs={
+                    "key": encoded_key,
+                    "point_number": 0})  # need kwargs for HDF5 datum
+            event_data[encoded_key] = datum['datum_id']
+            filled_fields[encoded_key] = False
+        else:
+            event_data[encoded_key] = dataset[()]
+    event = stream_bundle.compose_event(
+        data=event_data,
+        filled=filled_fields,
+        seq_num=0,
+        timestamps=event_timestamps
+    )
+    return event, datum
+        
 def create_event(file, stream_name, timestamp, stream_mapping, resource_doc, stream_bundle, event_num):
     datum = None
     event = None

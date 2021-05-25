@@ -97,6 +97,28 @@ def test_build_search_terms():
     assert "so" in terms
 
 
+def test_extract_scientific_metadata():
+    descriptor = {
+        "configuration": {
+            "all": {
+                "data": {
+                    "/a/b/1": "one",
+                    "/a/b/2": "five",
+                    "/a/d/1": 3
+                }
+            }
+        }
+    }
+    event_sample ={
+        "/a/c/1": [2]
+    }
+    sci_meta = ScicatIngestor.extract_scientific_metadata(descriptor, event_sample)
+    keys = sci_meta.keys()
+    assert list(keys) == sorted(keys)
+
+    
+
+
 
 start_doc = {
     "image_data": [1],

@@ -144,36 +144,6 @@ class ScicatIngestor():
             # pipe contents of the file through
             return hashlib.md5(file_to_check.read()).hexdigest()
 
-    # def _add_thumbnail(self, owner_group, dataset_id=None, filename=None, dataset_type="RawDatasets"):
-
-    #     def encodeImageToThumbnail(filename, imType='jpg'):
-    #         header = "data:image/{imType};base64,".format(imType=imType)
-    #         with open(filename, 'rb') as f:
-    #             data = f.read()
-    #         dataBytes = base64.b64encode(data)
-    #         dataStr = dataBytes.decode('UTF-8')
-    #         return header + dataStr
-
-    #     dataBlock = {
-    #         "caption": filename.stem,
-    #         "thumbnail": encodeImageToThumbnail(filename),
-    #         "datasetId": dataset_id,
-    #         "ownerGroup": "BAM 6.5",
-    #     }
-
-    #     url = self.baseurl + f"{dataset_type}/{urllib.parse.quote_plus(dataset_id)}/attachments"
-    #     logger.debug(url)
-    #     resp = requests.post(
-    #                 url,
-    #                 params={"access_token": self.token},
-    #                 timeout=self.timeouts,
-    #                 stream=False,
-    #                 json=dataBlock,
-    #                 verify=self.sslVerify,
-    #             )
-    #     return resp
-
-
 
     def ingest_run(self, filepath, run_start,  descriptor_doc, event_sample=None, thumbnails=None):
         logger.info(f"{self.job_id} Scicat ingestion started for {filepath}")
@@ -207,7 +177,7 @@ class ScicatIngestor():
             self._add_error(f"Error creating sample for {filepath}. Continuing without sample.", e)
         
         try:
-            scientific_metadata = self._extract_scientific_metadata(descriptor_doc, event_sample)
+            scientific_metadata = self.extract_scientific_metadata(descriptor_doc, event_sample)
         except Exception as e:
             self._add_error(f"Error getting scientific metadata. Continuing without.", e)
 
@@ -337,10 +307,14 @@ class ScicatIngestor():
 
 
     @staticmethod
-    def _extract_scientific_metadata(descriptor, event_page):
-        return_dict = {k.replace(":", "/"): v for k, v in descriptor['configuration']['all']['data'].items()}
-        if event_page:
-            return_dict['data_sample'] = event_page
+    def extract_scientific_metadata(descriptor, event_sample):
+        return_dict = {}
+        if descriptor:
+            return_dict = {k.replace(":", "/"): v for k, v in descriptor['configuration']['all']['data'].items()}
+        if event_sample:
+            return_dict.update(event_sample)
+        if len(return_dict) > 0:
+            return_dict = dict(sorted(return_dict.items(), key=lambda item: item[0]))
         return return_dict
 
     @staticmethod

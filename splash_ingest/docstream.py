@@ -4,7 +4,7 @@ from re import S
 from typing import List
 
 from dask import compute
-
+from databroker.core import BlueskyRun, SingleRunCache
 import event_model
 import numpy as np
 from PIL import Image, ImageOps
@@ -96,6 +96,15 @@ class MappedH5Generator():
     @property
     def issues(self):
         return self._issues
+
+    def build_run(self) -> BlueskyRun:
+        """Utility call that calls generate_docstream() and returns a BlueSkyRun
+        instance.
+        """
+        run_cache = SingleRunCache()
+        for name, doc in self.generate_docstream():
+            run_cache.callback(name, doc)
+        return run_cache.retrieve()
 
     def generate_docstream(self):
         """Generates docstream documents

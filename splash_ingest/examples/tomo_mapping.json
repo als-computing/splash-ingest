@@ -108,8 +108,7 @@
         ],
         "mapping_fields": [
             {"field": "/exchange/data", "external": true},
-            {"field": "/exchange/data_white", "external": true},
-            {"field": "/exchange/data_dark", "external": true},
+
             {"field": "/measurement/instrument/sample_motor_stack/setup/axis1pos"},
             {"field": "/measurement/instrument/sample_motor_stack/setup/axis2pos"},
             {"field": "/measurement/instrument/sample_motor_stack/setup/sample_x"},

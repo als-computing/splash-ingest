@@ -59,7 +59,7 @@ class MappedH5Generator():
 
 
     """
-    def __init__(self, mapping: Mapping, file, reference_root_name, pack_pages=True, data_groups=[], thumbs_root=None):
+    def __init__(self, mapping: Mapping, file, reference_root_name, data_groups=[], thumbs_root=None):
         """
 
         Parameters
@@ -84,10 +84,7 @@ class MappedH5Generator():
         self._thumbnails: [Path] = []
         self._issues: list[Issue] = []
         self._run_bundle = None
-        self._pack_pages = pack_pages
-        if self._pack_pages:
-            self._events = []
-            self._datums = []
+
 
     @property
     def thumbnails(self):
@@ -223,7 +220,7 @@ class MappedH5Generator():
                                 f"{stream_name} slice: {str(event_num)}")
                 continue
 
-            event, datum = create_event(
+            event, datums = create_event(
                 self._file,
                 stream_name,
                 time_stamp,
@@ -235,23 +232,13 @@ class MappedH5Generator():
             if can_debug:
                 logger.debug(f"Creating event with uid: {event['uid']}")
 
-            if self._pack_pages:
-                logger.debug("event store")
-                self._events.append(event)
-                if datum:
-                    self._datums.append(datum)
-            else:
-                logger.debug("event yield")
-                yield 'event', event
-                if datum:
+            logger.debug("event yield")
+            yield 'event', event
+            if len(datums) > 0:
+                for datum in datums:
                     yield 'datum', datum
 
-        if self._pack_pages:
-            logger.debug(f"packing pages: {stream_name}")
-            if len(self._events) > 0:
-                yield "event_page", event_model.pack_event_page(*self._events)
-            if len(self._datums) > 0:
-                yield "datum_page", event_model.pack_datum_page(*self._datums)
+        
         logger.debug(f"finished creating stream: {stream_name}")
 
     def _build_thumbnail(self, uid, directory, thumbnail_info: ThumbnailInfo):
@@ -389,7 +376,7 @@ def decode_key(key):
 
 
 def create_event(file, stream_name, timestamp, stream_mapping, resource_doc, stream_bundle, event_num):
-    datum = None
+    datums = []
     event = None
     issues = None
     logger.debug(f"assembling event {event_num}")
@@ -421,6 +408,7 @@ def create_event(file, stream_name, timestamp, stream_mapping, resource_doc, str
             
             event_data[encoded_key] = datum['datum_id']
             filled_fields[encoded_key] = False
+            datums.append(datum)
         else:
             # field's data provided in event
             if can_debug:
@@ -433,7 +421,7 @@ def create_event(file, stream_name, timestamp, stream_mapping, resource_doc, str
         seq_num=event_num,
         timestamps=event_timestamps
     )
-    return event, datum
+    return event, datums
 
 def calc_num_events(mapping_fields: List[StreamMappingField], file):
     # grab the first dataset referenced in the map,

@@ -1,6 +1,5 @@
 import datetime
 from pathlib import Path
-from event_model import pack_datum_page
 import h5py
 import numpy as np
 import pytest
@@ -130,7 +129,7 @@ def sample_file_no_timestamp(tmp_path):
 
 def test_hdf5_mapped_ingestor(sample_file, tmp_path):
     ingestor = MappedH5Generator(
-        Mapping(**mapping_dict), sample_file, "test_root", pack_pages=False, thumbs_root=tmp_path)
+        Mapping(**mapping_dict), sample_file, "test_root", thumbs_root=tmp_path)
     run_cache = SingleRunCache()
     descriptors = []
     result_events = []
@@ -183,30 +182,6 @@ def test_hdf5_mapped_ingestor(sample_file, tmp_path):
     dir = Path(tmp_path)
     file = run_uid + ".png"
     assert Path(dir / file).exists()
-
-
-
-def test_hdf5_mapped_ingestor_packed(sample_file, tmp_path):
-    ingestor = MappedH5Generator(
-        Mapping(**mapping_dict), sample_file, "test_root", pack_pages=True, thumbs_root=tmp_path)
-    run_cache = SingleRunCache()
-
-    # expect one set of pages each of 2 streams
-    result_event_pages = [] 
-    result_datums_pages = []
-
-    for name, doc in ingestor.generate_docstream():
-        run_cache.callback(name, doc)
-        if name == "datum_page":
-            result_datums_pages.append(doc)
-            continue
-        if name == "event_page":
-            result_event_pages.append(doc)
-    assert len(result_event_pages) == 2, "event page is produced"
-    assert len(result_datums_pages) == 2, "datum page is produced"
-    run = run_cache.retrieve()
-    stream = run["primary"].to_dask()
-    assert stream
 
 
 def test_mapped_ingestor_bad_stream_field(sample_file):

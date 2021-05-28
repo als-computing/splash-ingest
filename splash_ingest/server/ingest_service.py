@@ -232,7 +232,7 @@ def ingest(submitter: str, job: Job, thumbs_root=None, scicat_baseurl=None, scic
         logger.info(f"mapping found for {job.id} for file {job.document_path}") 
         mapping = mapping_with_revision
         file = h5py.File(job.document_path, "r")
-        doc_generator = MappedH5Generator(mapping, file, 'mapping_ingestor', thumbs_root=thumbs_root, pack_pages=True)
+        doc_generator = MappedH5Generator(mapping, file, 'mapping_ingestor', thumbs_root=thumbs_root)
         # we always generate a docstream, but depending on the ingestors listed in the job we may do different things
         # with the docstream
 

@@ -37,6 +37,10 @@
                 "description": null
             },
             {
+                "field": "/measurement/sample/experimenter/email",
+                "description": null
+            }
+            {
                 "field": "/measurement/sample/experiment/pi",
                 "description": null
             },
@@ -177,6 +181,11 @@
             "experimenter_name": {
                 "type": "configuration",
                 "field": ":measurement:sample:experimenter:name",
+                "location": "start"
+            },
+            "experimenter_email": {
+                "type": "configuration",
+                "field": ":measurement:sample:experimenter:email",
                 "location": "start"
             },
             "pi_name": {

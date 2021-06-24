@@ -1,9 +1,11 @@
 from datetime import datetime
 from enum import Enum
+
 from typing import Optional, List
 
 from pydantic import BaseModel
 
+from ..model import Issue
 
 class RevisionStamp(BaseModel):
     user: str
@@ -29,6 +31,7 @@ class StatusItem(BaseModel):
     status: JobStatus
     log: Optional[str]
     submitter: str
+    issues: Optional[List[Issue]]
 
 
 class Job(BaseModel):

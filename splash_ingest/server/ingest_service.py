@@ -17,7 +17,7 @@ from pymongo.collection import Collection
 
 from suitcase.mongo_normalized import Serializer
 
-from splash_ingest.model import Mapping, Issue
+from splash_ingest.model import Mapping, Issue, Severity
 from splash_ingest.docstream import MappedH5Generator
 from .model import (
     IngestType,
@@ -232,7 +232,7 @@ def ingest(submitter: str, job: Job, thumbs_root=None, scicat_baseurl=None, scic
         logger.info(f"mapping found for {job.id} for file {job.document_path}") 
         mapping = mapping_with_revision
         file = h5py.File(job.document_path, "r")
-        doc_generator = MappedH5Generator(mapping, file, 'mapping_ingestor', thumbs_root=thumbs_root, pack_pages=True)
+        doc_generator = MappedH5Generator( [], mapping, file, 'mapping_ingestor', thumbs_root=thumbs_root, pack_pages=True)
         # we always generate a docstream, but depending on the ingestors listed in the job we may do different things
         # with the docstream
 
@@ -255,10 +255,11 @@ def ingest(submitter: str, job: Job, thumbs_root=None, scicat_baseurl=None, scic
                     logger.error(f"Exception storing document {name}", e)
                     raise e
         logger.info(f"{job.id} databroker ingestion complete")
-        issues: list[Issue] = doc_generator.issues
+        issues: List[Issue] = doc_generator.issues
         if IngestType.scicat in job.ingest_types:
             logger.info(f"{job.id} scicat ingestion starting")
             scicat_ingestor = ScicatIngestor(
+                start_uid,
                 issues,
                 baseurl=scicat_baseurl,
                 username=scicat_user,
@@ -272,13 +273,17 @@ def ingest(submitter: str, job: Job, thumbs_root=None, scicat_baseurl=None, scic
                 thumbnails=doc_generator.thumbnails)
             logger.info(f"{job.id} scicat ingestion complete")
         job_log = f'ingested start doc: {start_uid}'
+
         if issues and len(issues) > 0:
+            status = JobStatus.complete_with_issues
             for issue in issues:
+                if issue.severity == Severity.error:
+                    status = JobStatus.error
                 job_log += f"\n :  {issue.msg}"
                 if issue.exception:
                     job_log += f"\n    Exception: {issue.exception}"
-            status = StatusItem(time=datetime.utcnow(), status=JobStatus.complete_with_issues,
-                                submitter=submitter, log=job_log)
+            status = StatusItem(time=datetime.utcnow(), status=status,
+                                submitter=submitter, log=job_log, issues=issues)
         else:
             status = StatusItem(time=datetime.utcnow(), status=JobStatus.successful, submitter=submitter, log=job_log)
         set_job_status(job.id, status)

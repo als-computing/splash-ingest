@@ -15,8 +15,9 @@ from typing import List
 import numpy as np
 import requests  # for HTTP requests
 
-from splash_ingest.docstream import MappedH5Generator
-from splash_ingest.model import Mapping, Issue
+from .docstream import MappedH5Generator
+from .model import Mapping, Issue
+from .util import IssueCollectorMixin
 
 logger = logging.getLogger("splash_ingest.scicat")
 can_debug = logger.isEnabledFor(logging.DEBUG)
@@ -27,7 +28,7 @@ class ScicatCommError(Exception):
         self.message = message
 
 
-class ScicatIngestor():
+class ScicatIngestor(IssueCollectorMixin):
     # settables
     host = "localhost:3000"
     baseurl = "http://" + host + "/api/v3/"
@@ -47,8 +48,10 @@ class ScicatIngestor():
     job_id = "0"
     test = False
 
-    def __init__(self, issues: List[Issue], **kwargs):
-        self.issues = issues
+    def __init__(self, dataset_id, issues: List[Issue], **kwargs):
+        self.dataset_id = dataset_id
+        self.stage = "scicat"
+        self._issues = issues
         # nothing to do
         for key, value in kwargs.items():
             assert key in self.settables, f"key {key} is not a valid input argument"
@@ -57,14 +60,6 @@ class ScicatIngestor():
         if self.baseurl[-1] != "/":
             self.baseurl = self.baseurl + "/"
             logger.info(f"Baseurl corrected to: {self.baseurl}")
-
-    def _add_error(self, msg: str, exc: Exception):
-        logger.error(f"{self.job_id} {msg} encountered exception: {exc}")
-        self.issues.append(Issue(stage="scicat", msg=msg, exception=exc))
-
-    def _add_issue(self, msg):
-        logger.info(f"{self.job_id} {msg}")
-        self.issues.append(Issue(stage="scicat", msg=msg))
 
     def _get_token(self, username=None, password=None):
         if username is None:
@@ -86,7 +81,7 @@ class ScicatIngestor():
             logger.error(f'{self.job_id} ** Error received: {response}')
             err = response.json()["error"]
             logger.error(f'{self.job_id} {err["name"]}, {err["statusCode"]}: {err["message"]}')
-            self._add_issue(f'error getting token {err["name"]}, {err["statusCode"]}: {err["message"]}')
+            self.add_issue(f'error getting token {err["name"]}, {err["statusCode"]}: {err["message"]}')
             return None
 
         data = response.json()
@@ -144,24 +139,23 @@ class ScicatIngestor():
             # pipe contents of the file through
             return hashlib.md5(file_to_check.read()).hexdigest()
 
-
     def ingest_run(self, filepath, run_start,  descriptor_doc, event_sample=None, thumbnails=None):
-        logger.info(f"{self.job_id} Scicat ingestion started for {filepath}")
+        logger.info(f"{self.job_id} Scicat ingestion started for {filepath} and uid {self.dataset_id}")
         # get token
         try:
             self.token = self._get_token(username=self.username, password=self.password)
         except Exception as e:
-            self._add_error("Could not generate token. Exiting.", e)
+            self.add_error("Could not generate token. Exiting.", e)
             return
         if not self.token:
-            self._add_issue("could not create token, exiting")
+            self.add_error("could not create token, exiting")
             return
 
         logger.info(f"{self.job_id} Ingesting file {filepath}")
         try:
             projected_start_doc = project_start_doc(run_start, "app")
         except Exception as e:
-            self._add_error("error projecting start document. Exiting.", e)
+            self.add_error("error projecting start document. Exiting.", e)
             return
         
         if can_debug:
@@ -174,12 +168,12 @@ class ScicatIngestor():
         try:
             self._create_sample(projected_start_doc, access_groups, owner_group)
         except Exception as e:
-            self._add_error(f"Error creating sample for {filepath}. Continuing without sample.", e)
+            self.add_error(f"Error creating sample for {filepath}. Continuing without sample.", e)
         
         try:
-            scientific_metadata = self.extract_scientific_metadata(descriptor_doc, event_sample)
+            scientific_metadata = self._extract_scientific_metadata(descriptor_doc, event_sample)
         except Exception as e:
-            self._add_error(f"Error getting scientific metadata. Continuing without.", e)
+            self.add_error(f"Error getting scientific metadata. Continuing without.", e)
 
         try:
             self._create_raw_dataset(
@@ -189,7 +183,7 @@ class ScicatIngestor():
                 filepath,
                 thumbnails)
         except Exception as e:
-            self._add_error("Error creating raw data set.", e)
+            self.add_error("Error creating raw data set.", e)
 
     def _create_sample(self, projected_start_doc, access_groups, owner_group):
         sample = {
@@ -212,25 +206,35 @@ class ScicatIngestor():
             err = resp.json()["error"]
             raise ScicatCommError(f"Error creating Sample {err}")
 
+    def _get_field(self, field_name: str, projected_dict: dict, default_val):
+        "some fields are required by scicat but we don't want to blow up, rather provide a default value"
+        if projected_dict.get(field_name):
+            return projected_dict.get(field_name)
+        else:
+            self.add_warning(f"missing field {field_name} defaulting to {str(default_val)}")
+            return default_val
 
     def _create_raw_dataset(self, projected_start_doc, scientific_metadata, access_groups, owner_group, filepath, thumbnails):
-        principalInvestigator = projected_start_doc.get('pi_name')
-        if not principalInvestigator:
-            principalInvestigator = "uknonwn"
-        creationLocation = projected_start_doc.get('beamline')
-        if not creationLocation:
-            creationLocation = "unknown"
-        # model for the raw datasets as defined in the RawDatasets
-        data = { 
-            "owner": projected_start_doc.get('pi_name'),
-            "contactEmail": "dmcreynolds@lbl.gov",
+        # model for the raw datasets as defined in the RawDatasets, required fields:
+        # pid
+        # owner
+        # contactEmail
+        # sourceFolder
+        # creationTime
+        # type
+
+        creation_time_raw = self._get_field('collection_date', projected_start_doc, [datetime.now()])
+        creation_time = (datetime.isoformat(datetime.fromtimestamp(creation_time_raw[0])) + "Z")
+        data = {
+            "pid": self.dataset_id,
+            "owner": self._get_field('pi_name', projected_start_doc, "unavailable"),
+            "contactEmail": self._get_field('experimenter_email', projected_start_doc, "unavailable"),
             "createdBy": self.username,
             "updatedBy": self.username,
-            "creationLocation": creationLocation,
+            "creationLocation": self._get_field('beamline', projected_start_doc, 'unkown'),
             "updatedAt": datetime.isoformat(datetime.utcnow()) + "Z",
             "createdAt": datetime.isoformat(datetime.utcnow()) + "Z",
-            "creationTime": (datetime.isoformat(datetime.fromtimestamp(
-                projected_start_doc.get('collection_date')[0])) + "Z"),
+            "creationTime": creation_time,
             "datasetName": filepath.stem,
             "type": "raw",
             "instrumentId": projected_start_doc.get('instrument_name'),
@@ -238,7 +242,7 @@ class ScicatIngestor():
             "accessGroups": access_groups,
             "proposalId": projected_start_doc.get('proposal'),
             "dataFormat": "DX",
-            "principalInvestigator": principalInvestigator,
+            "principalInvestigator": self._get_field('pi_name', projected_start_doc, "unknown"),
             "sourceFolder": filepath.parent.as_posix(),
             "size": self._get_file_size(filepath),
             "scientificMetadata": scientific_metadata,
@@ -307,14 +311,10 @@ class ScicatIngestor():
 
 
     @staticmethod
-    def extract_scientific_metadata(descriptor, event_sample):
-        return_dict = {}
-        if descriptor:
-            return_dict = {k.replace(":", "/"): v for k, v in descriptor['configuration']['all']['data'].items()}
-        if event_sample:
-            return_dict.update(event_sample)
-        if len(return_dict) > 0:
-            return_dict = dict(sorted(return_dict.items(), key=lambda item: item[0]))
+    def _extract_scientific_metadata(descriptor, event_page):
+        return_dict = {k.replace(":", "/"): v for k, v in descriptor['configuration']['all']['data'].items()}
+        if event_page:
+            return_dict['data_sample'] = event_page
         return return_dict
 
     @staticmethod
@@ -367,6 +367,7 @@ def gen_ev_docs(scm: ScicatIngestor, filename: str, mapping_file: str):
     map = Mapping(**data)
     with h5py.File(filename, 'r') as h5_file:
         ingestor = MappedH5Generator(
+            [],
             map,
             h5_file,
             'root',

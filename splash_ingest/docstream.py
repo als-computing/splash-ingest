@@ -9,13 +9,13 @@ import event_model
 import numpy as np
 from PIL import Image, ImageOps
 
-
-
+from .util import IssueCollectorMixin
 from .model import (
     ConfigurationMapping,
     Issue,
     Mapping,
     MappingField,
+    Severity,
     StreamMapping,
     StreamMappingField,
     ThumbnailInfo
@@ -25,6 +25,7 @@ logger = logging.getLogger("splash_ingest.docstream")
 
 can_info = logger.isEnabledFor(logging.INFO)
 can_debug = logger.isEnabledFor(logging.DEBUG)
+
 class MappingNotFoundError(Exception):
     def __init__(self, location, missing_field):
         self.missing_field = missing_field
@@ -49,7 +50,7 @@ class ThumnailDimensionError(Exception):
     ''' specified thumnail has unsupported dimensions '''
     pass
 
-class MappedH5Generator():
+class MappedH5Generator(IssueCollectorMixin):
     """Provides an ingestor (make of event_model docstreams) based on a single hdf5 file
     and mapping document.
 
@@ -59,9 +60,8 @@ class MappedH5Generator():
 
 
     """
-    def __init__(self, mapping: Mapping, file, reference_root_name, pack_pages=True, data_groups=[], thumbs_root=None):
+    def __init__(self, issues: List[Issue], mapping: Mapping, file, reference_root_name, pack_pages=True, data_groups=[], thumbs_root=None):
         """
-
         Parameters
         ----------
         mapping : Mapping
@@ -76,13 +76,15 @@ class MappedH5Generator():
             projection to insert into the run_start document, by default None
         """
         super().__init__()
+        self.stage = "databroker"
+        self._issues = issues
         self._mapping = mapping
         self._file = file
         self._reference_root_name = reference_root_name
         self._data_groups = data_groups
         self._thumbs_root = thumbs_root
-        self._thumbnails: [Path] = []
-        self._issues: list[Issue] = []
+        self._thumbnails: List[Path] = []
+  
         self._run_bundle = None
         self._pack_pages = pack_pages
         if self._pack_pages:
@@ -93,9 +95,6 @@ class MappedH5Generator():
     def thumbnails(self):
         return self._thumbnails
 
-    @property
-    def issues(self):
-        return self._issues
 
     def generate_docstream(self):
         """Generates docstream documents
@@ -160,8 +159,8 @@ class MappedH5Generator():
             self._data_groups.append(self._get_dataset_value(self._file['/measurement/sample/experiment/proposal']))
         return self._data_groups
 
-    def _add_issue(self, message, exception=None):
-        self._issues.append(Issue(stage="gen_docsteram", msg=message, exception=exception))
+
+
 
 
     def _process_stream(self, stream_name, resource_doc):
@@ -184,13 +183,13 @@ class MappedH5Generator():
         try:
             num_events = calc_num_events(stream_mapping.mapping_fields, self._file)
         except FieldNotInResourceError as e:
-            self._add_issue("Error finding stream mapping", e)
+            self.add_warning("Error finding stream mapping", e)
 
         logger.info(f"expecting {str(num_events)} events")
         try:
             time_stamp_dataset = self._file[stream_timestamp_field][()]
         except Exception as e:
-            self._add_issue(f"Error fetching timestamp for {stream_name}", e)
+            self.add_warning(f"Error fetching timestamp for {stream_name}", e)
             return
 
         if (stream_mapping.thumbnail_info and stream_mapping.thumbnail_info.number > 0
@@ -203,14 +202,14 @@ class MappedH5Generator():
                 logger.info(f"created thumbnail {file}")
                 self._thumbnails.append(file)
             except Exception as e:
-                self._add_issue("Error producing  thumbnail", e)
+                self.add_warning("Error producing  thumbnail", e)
 
         # produce documents for each event (event and datum)
         for event_num in range(0, num_events):
             try:
                 time_stamp = time_stamp_dataset[event_num]
             except Exception:
-                self._add_issue(f"Missing timestamp for"
+                self.add_warning(f"Missing timestamp for"
                                 f"{stream_name} slice: {str(event_num)}")
                 continue
 
@@ -277,7 +276,7 @@ class MappedH5Generator():
             try:
                 metadata[encoded_key] = self._get_dataset_value(self._file[mapping.field])
             except Exception as e:
-                self._add_issue(f"Error finding run_start mapping {mapping.field}", e)
+                self.add_warning(f"Error finding run_start mapping {mapping.field}", e)
                 continue
         logger.debug("leaving  _extract_metadata")
         return metadata
@@ -290,7 +289,7 @@ class MappedH5Generator():
             try:
                 hdf5_dataset = self._file[mapping_field.field]
             except Exception as e:
-                self._add_issue(f"Error finding stream mapping {mapping_field}", e)
+                self.add_warning(f"Error finding stream mapping {mapping_field}", e)
                 continue
             units = hdf5_dataset.attrs.get('units')
             if units is not None:
@@ -334,7 +333,7 @@ class MappedH5Generator():
                 try:
                     hdf5_dataset = self._file[field.field]
                 except Exception as e:
-                    self._add_issue(f"Error finding event desc configuration mapping {field.field}", e)
+                    self.add_warning(f"Error finding event desc configuration mapping {field.field}", e)
                     continue
                 units = hdf5_dataset.attrs.get('units')
                 if units is not None:
@@ -367,7 +366,7 @@ class MappedH5Generator():
                 return data_set[()]
                 
         except Exception as e:
-            self._add_issue(f"error extracting field {data_set.name}", e)
+            self.add_warning(f"error extracting field {data_set.name}", e)
             return None
 
 
@@ -395,7 +394,7 @@ def create_event(file, stream_name, timestamp, stream_mapping, resource_doc, str
         try:
             dataset = file[field.field]
         except Exception as e:
-            # self._add_issue(f"Error finding event mapping {field.field}", e)
+            # self._add_warning(f"Error finding event mapping {field.field}", e)
             return
 
         encoded_key = encode_key(field.field)

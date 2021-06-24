@@ -130,7 +130,7 @@ def sample_file_no_timestamp(tmp_path):
 
 def test_hdf5_mapped_ingestor(sample_file, tmp_path):
     ingestor = MappedH5Generator(
-        Mapping(**mapping_dict), sample_file, "test_root", pack_pages=False, thumbs_root=tmp_path)
+        [], Mapping(**mapping_dict), sample_file, "test_root", pack_pages=False, thumbs_root=tmp_path)
     run_cache = SingleRunCache()
     descriptors = []
     result_events = []
@@ -188,7 +188,7 @@ def test_hdf5_mapped_ingestor(sample_file, tmp_path):
 
 def test_hdf5_mapped_ingestor_packed(sample_file, tmp_path):
     ingestor = MappedH5Generator(
-        Mapping(**mapping_dict), sample_file, "test_root", pack_pages=True, thumbs_root=tmp_path)
+        [], Mapping(**mapping_dict), sample_file, "test_root", pack_pages=True, thumbs_root=tmp_path)
     run_cache = SingleRunCache()
 
     # expect one set of pages each of 2 streams
@@ -228,7 +228,7 @@ def test_mapped_ingestor_bad_stream_field(sample_file):
             },
         }
     }
-    ingestor = MappedH5Generator(Mapping(**mapping_dict_bad_stream_field), sample_file, "test_root")
+    ingestor = MappedH5Generator([], Mapping(**mapping_dict_bad_stream_field), sample_file, "test_root")
     list(ingestor.generate_docstream())
     issue = ingestor.issues[0]
     assert "Error finding stream mapping" in issue.msg
@@ -245,7 +245,7 @@ def test_mapped_ingestor_bad_metadata_field(sample_file):
         ],
         "stream_mappings": {}
     }
-    ingestor = MappedH5Generator(Mapping(**mapping_dict_bad_metadata_field), sample_file, "test_root")
+    ingestor = MappedH5Generator([], Mapping(**mapping_dict_bad_metadata_field), sample_file, "test_root")
     list(ingestor.generate_docstream())
     issue = ingestor.issues[0]
     assert "Error finding run_start mapping" in issue.msg
@@ -275,7 +275,7 @@ def test_timestamp_error(sample_file):
             }
         }
     }
-    ingestor = MappedH5Generator(Mapping(**mapping), sample_file, "test_root")
+    ingestor = MappedH5Generator([], Mapping(**mapping), sample_file, "test_root")
 
     list(ingestor.generate_docstream())
     issue = ingestor.issues[0]
@@ -287,13 +287,13 @@ def test_key_transformation():
 
 
 def test_data_groups(sample_file):
-    ingestor = MappedH5Generator(Mapping(**mapping_dict), sample_file, "test_root")
+    ingestor = MappedH5Generator([], Mapping(**mapping_dict), sample_file, "test_root")
     for name, doc in ingestor.generate_docstream():
         if name == 'start':
             assert doc['data_groups'] == []
             continue
 
-    ingestor = MappedH5Generator(Mapping(**mapping_dict), sample_file, "test_root", data_groups=['bealine1', 'users1'])
+    ingestor = MappedH5Generator([], Mapping(**mapping_dict), sample_file, "test_root", data_groups=['bealine1', 'users1'])
     for name, doc in ingestor.generate_docstream():
         if name == 'start':
             assert doc['data_groups'] == ['bealine1', 'users1']

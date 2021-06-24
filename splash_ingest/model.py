@@ -1,3 +1,4 @@
+import enum
 from typing import Dict, List, Optional, Union
 
 from pydantic import BaseModel, Field
@@ -41,8 +42,13 @@ class Mapping(BaseModel):
     stream_mappings: Optional[Dict[str, StreamMapping]]
     projections: Optional[List[Dict]]
 
+class Severity(enum.Enum):
+    warning = "warning"
+    error = "error"
+
 
 class Issue(BaseModel):
+    severity: Severity
     stage: str
     msg: str
     exception: Union[Exception, None]

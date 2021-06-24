@@ -74,17 +74,23 @@ def test_projected_start():
     assert projected['collection_date'] == [1619564232.0]
 
 
+
+def add_mock_requests(mock_request):
+    mock_request.post("http://localhost:3000/api/v3/Users/login", json={"id": "foobar"})
+    mock_request.post("http://localhost:3000/api/v3/Samples", json={"sampleId": "sample_id"})
+    mock_request.post("http://localhost:3000/api/v3/RawDatasets/replaceOrCreate", json={"pid": "42"})
+    mock_request.post("http://localhost:3000/api/v3/RawDatasets/42/origdatablocks", json={"response": "random"})
+
 def test_scicate_ingest(sample_file):
     with requests_mock.Mocker() as mock_request:
-        mock_request.post("http://localhost:3000/api/v3/Users/login", json={"id": "foobar"})
-        mock_request.post("http://localhost:3000/api/v3/Samples", json={"sampleId": "sample_id"})
-        mock_request.post("http://localhost:3000/api/v3/RawDatasets/replaceOrCreate", json={"pid": "42"})
-        mock_request.post("http://localhost:3000/api/v3/RawDatasets/42/origdatablocks", json={"response": "random"})
+        add_mock_requests(mock_request)
         issues: list[Issue] = []
         scicat = ScicatIngestor(issues, host="localhost:3000")
         scicat.ingest_run(Path(sample_file.filename), start_doc, descriptor_doc)
         assert len(issues) == 0
 
+
+    
 
 def test_build_search_terms():
     terms = build_search_terms({"sample_name": "Time-is_an illusion. Lunchtime/2x\\so."})
@@ -95,6 +101,20 @@ def test_build_search_terms():
     assert "lunchtime" in terms
     assert "2x" in terms
     assert "so" in terms
+
+
+def test_get_field():
+    with requests_mock.Mocker() as mock_request:
+        add_mock_requests(mock_request)
+        issues: list[Issue] = []
+        scicat = ScicatIngestor(issues, host="localhost:3000")
+        projected_doc = {
+            "foo": "bar"
+        }
+        assert scicat._get_field("foo", projected_doc, "nothing") == "bar"
+        assert scicat._get_field("foo2", projected_doc, "nothing") == "nothing"
+        assert len(scicat.issues) == 1
+        assert "missing field" in scicat.issues[0].msg
 
 
 def test_extract_scientific_metadata():
@@ -112,7 +132,7 @@ def test_extract_scientific_metadata():
     event_sample ={
         "/a/c/1": [2]
     }
-    sci_meta = ScicatIngestor.extract_scientific_metadata(descriptor, event_sample)
+    sci_meta = ScicatIngestor._extract_scientific_metadata(descriptor, event_sample)
     keys = sci_meta.keys()
     assert list(keys) == sorted(keys)
 
@@ -130,6 +150,7 @@ start_doc = {
     "proposal": "proposal",
     "experiment_title": "experiment_title",
     "experimenter_name": "experimenter_name",
+    "experimenter_email": "experimenter_email",
     "pi_name": "pi_name",
     "projections": [
     {
@@ -182,6 +203,11 @@ start_doc = {
             "experimenter_name": {
                 "type": "configuration",
                 "field": "experimenter_name",
+                "location": "start"
+            },
+             "experimenter_email": {
+                "type": "configuration",
+                "field": "experimenter_email",
                 "location": "start"
             },
             "pi_name": {

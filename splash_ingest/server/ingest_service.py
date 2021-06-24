@@ -255,10 +255,11 @@ def ingest(submitter: str, job: Job, thumbs_root=None, scicat_baseurl=None, scic
                     logger.error(f"Exception storing document {name}", e)
                     raise e
         logger.info(f"{job.id} databroker ingestion complete")
-        issues: list[Issue] = doc_generator.issues
+        issues: List[Issue] = doc_generator.issues
         if IngestType.scicat in job.ingest_types:
             logger.info(f"{job.id} scicat ingestion starting")
             scicat_ingestor = ScicatIngestor(
+                start_uid,
                 issues,
                 baseurl=scicat_baseurl,
                 username=scicat_user,

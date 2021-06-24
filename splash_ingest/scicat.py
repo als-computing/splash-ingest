@@ -48,7 +48,8 @@ class ScicatIngestor(IssueCollectorMixin):
     job_id = "0"
     test = False
 
-    def __init__(self, issues: list[Issue], **kwargs):
+    def __init__(self, dataset_id, issues: List[Issue], **kwargs):
+        self.dataset_id = dataset_id
         self.stage = "scicat"
         self._issues = issues
         # nothing to do
@@ -139,7 +140,7 @@ class ScicatIngestor(IssueCollectorMixin):
             return hashlib.md5(file_to_check.read()).hexdigest()
 
     def ingest_run(self, filepath, run_start,  descriptor_doc, event_sample=None, thumbnails=None):
-        logger.info(f"{self.job_id} Scicat ingestion started for {filepath}")
+        logger.info(f"{self.job_id} Scicat ingestion started for {filepath} and uid {self.dataset_id}")
         # get token
         try:
             self.token = self._get_token(username=self.username, password=self.password)
@@ -224,7 +225,8 @@ class ScicatIngestor(IssueCollectorMixin):
 
         creation_time_raw = self._get_field('collection_date', projected_start_doc, [datetime.now()])
         creation_time = (datetime.isoformat(datetime.fromtimestamp(creation_time_raw[0])) + "Z")
-        data = { 
+        data = {
+            "pid": self.dataset_id,
             "owner": self._get_field('pi_name', projected_start_doc, "unavailable"),
             "contactEmail": self._get_field('experimenter_email', projected_start_doc, "unavailable"),
             "createdBy": self.username,

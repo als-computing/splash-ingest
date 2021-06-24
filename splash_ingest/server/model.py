@@ -1,5 +1,6 @@
 from datetime import datetime
 from enum import Enum
+
 from typing import Optional, List
 
 from pydantic import BaseModel
@@ -30,7 +31,7 @@ class StatusItem(BaseModel):
     status: JobStatus
     log: Optional[str]
     submitter: str
-    issues: Optional[list[Issue]]
+    issues: Optional[List[Issue]]
 
 
 class Job(BaseModel):

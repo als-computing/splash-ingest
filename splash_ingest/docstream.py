@@ -83,7 +83,7 @@ class MappedH5Generator(IssueCollectorMixin):
         self._reference_root_name = reference_root_name
         self._data_groups = data_groups
         self._thumbs_root = thumbs_root
-        self._thumbnails: list[Path] = []
+        self._thumbnails: List[Path] = []
   
         self._run_bundle = None
         self._pack_pages = pack_pages

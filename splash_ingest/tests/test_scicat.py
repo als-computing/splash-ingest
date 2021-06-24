@@ -1,7 +1,9 @@
-import h5py
+
 from pathlib import Path
+from typing import List
+
+import h5py
 import pytest
-# import requests
 import requests_mock
 
 from ..scicat import project_start_doc, ScicatIngestor, build_search_terms
@@ -77,15 +79,15 @@ def test_projected_start():
 
 def add_mock_requests(mock_request):
     mock_request.post("http://localhost:3000/api/v3/Users/login", json={"id": "foobar"})
-    mock_request.post("http://localhost:3000/api/v3/Samples", json={"sampleId": "sample_id"})
+    mock_request.post("http://localhost:3000/api/v3/Samples", json={"sampleId": "dataset_id"})
     mock_request.post("http://localhost:3000/api/v3/RawDatasets/replaceOrCreate", json={"pid": "42"})
     mock_request.post("http://localhost:3000/api/v3/RawDatasets/42/origdatablocks", json={"response": "random"})
 
 def test_scicate_ingest(sample_file):
     with requests_mock.Mocker() as mock_request:
         add_mock_requests(mock_request)
-        issues: list[Issue] = []
-        scicat = ScicatIngestor(issues, host="localhost:3000")
+        issues: List[Issue] = []
+        scicat = ScicatIngestor("dataset_id", issues, host="localhost:3000")
         scicat.ingest_run(Path(sample_file.filename), start_doc, descriptor_doc)
         assert len(issues) == 0
 
@@ -106,8 +108,8 @@ def test_build_search_terms():
 def test_get_field():
     with requests_mock.Mocker() as mock_request:
         add_mock_requests(mock_request)
-        issues: list[Issue] = []
-        scicat = ScicatIngestor(issues, host="localhost:3000")
+        issues: List[Issue] = []
+        scicat = ScicatIngestor("dataset_id", issues, host="localhost:3000")
         projected_doc = {
             "foo": "bar"
         }
@@ -141,6 +143,7 @@ def test_extract_scientific_metadata():
 
 
 start_doc = {
+    "uid": "dataset_id",
     "image_data": [1],
     "sample_name": "sample_name",
     "sample_id": "sample_id",

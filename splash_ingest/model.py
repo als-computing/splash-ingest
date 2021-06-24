@@ -43,7 +43,7 @@ class Mapping(BaseModel):
     stream_mappings: Optional[Dict[str, StreamMapping]]
     projections: Optional[List[Dict]]
 
-class Severity(enum.Enum):
+class Severity(str, enum.Enum):
     warning = "warning"
     error = "error"
 

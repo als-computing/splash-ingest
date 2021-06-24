@@ -1,8 +1,10 @@
+from typing import List
+
 from .model import Issue, Severity
 
 
 class IssueCollectorMixin():
-    _issues:list[Issue] = []
+    _issues:List[Issue] = []
     def __init__(self, **kwargs) -> None:
         self.stage = kwargs.get('stage') if kwargs.get('stage') else 'unknown'
 

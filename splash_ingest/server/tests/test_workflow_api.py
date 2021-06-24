@@ -28,7 +28,7 @@ def test_create_job_api(client: TestClient):
     request = CreateJobRequest(file_path="/foo/bar.hdf5", mapping_name="beamline_mappings",
                                mapping_version="42", ingest_types=[IngestType.databroker, IngestType.scicat])
     response: CreateJobResponse = client.post(url="/api/ingest/jobs", data=request.json(), headers={API_KEY_NAME: key})
-    assert response.status_code == 200
+    assert response.status_code == 200, f"failed with message {response.content}"
     job_id = response.json()['job_id']
 
     response = client.get(url="/api/ingest/jobs/" + job_id)
@@ -45,7 +45,7 @@ def test_mapping_api(client: TestClient):
     response: CreateMappingResponse = client.post(url="/api/ingest/mappings",
                                                   data=request.json(),
                                                   headers={API_KEY_NAME: key})
-    assert response.status_code == 200
+    assert response.status_code == 200, f"failed with message {response.content}"
     response = client.get(url="/api/ingest/mappings/" + "foo",
                           headers={API_KEY_NAME: key})
     mapping = Mapping(**response.json())   # first item because we have a version tag in there

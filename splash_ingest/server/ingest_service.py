@@ -17,7 +17,7 @@ from pymongo.collection import Collection
 
 from suitcase.mongo_normalized import Serializer
 
-from splash_ingest.model import Mapping, Issue
+from splash_ingest.model import Mapping, Issue, Severity
 from splash_ingest.docstream import MappedH5Generator
 from .model import (
     IngestType,
@@ -272,13 +272,17 @@ def ingest(submitter: str, job: Job, thumbs_root=None, scicat_baseurl=None, scic
                 thumbnails=doc_generator.thumbnails)
             logger.info(f"{job.id} scicat ingestion complete")
         job_log = f'ingested start doc: {start_uid}'
+
         if issues and len(issues) > 0:
+            status = JobStatus.complete_with_issues
             for issue in issues:
+                if issue.severity == Severity.error:
+                    status = JobStatus.error
                 job_log += f"\n :  {issue.msg}"
                 if issue.exception:
                     job_log += f"\n    Exception: {issue.exception}"
-            status = StatusItem(time=datetime.utcnow(), status=JobStatus.complete_with_issues,
-                                submitter=submitter, log=job_log)
+            status = StatusItem(time=datetime.utcnow(), status=status,
+                                submitter=submitter, log=job_log, issues=issues)
         else:
             status = StatusItem(time=datetime.utcnow(), status=JobStatus.successful, submitter=submitter, log=job_log)
         set_job_status(job.id, status)

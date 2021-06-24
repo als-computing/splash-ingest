@@ -1,4 +1,5 @@
 import enum
+
 from typing import Dict, List, Optional, Union
 
 from pydantic import BaseModel, Field
@@ -51,7 +52,7 @@ class Issue(BaseModel):
     severity: Severity
     stage: str
     msg: str
-    exception: Union[Exception, None]
+    exception: Union[str, None]
 
     class Config:
         arbitrary_types_allowed = True

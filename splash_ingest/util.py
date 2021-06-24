@@ -11,7 +11,19 @@ class IssueCollectorMixin():
         return self._issues
 
     def add_warning(self, message, exception=None):
-        self._issues.append(Issue(stage=self.stage, severity=Severity.warning, msg=message, exception=exception))
+        self._issues.append(Issue(
+            stage=self.stage, 
+            severity=Severity.warning,
+            msg=message, 
+            exception=IssueCollectorMixin.serialize_execption(exception)))
 
     def add_error(self, message, exception=None):
-        self._issues.append(Issue(stage=self.stage, severity=Severity.error, msg=message, exception=exception))
+        self._issues.append(Issue(
+            stage=self.stage, 
+            severity=Severity.error, 
+            msg=message, 
+            exception=IssueCollectorMixin.serialize_execption(exception)))
+
+    @staticmethod
+    def serialize_execption(exception: Exception) -> str:
+        return repr(exception)

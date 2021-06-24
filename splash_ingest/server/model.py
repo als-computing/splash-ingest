@@ -4,6 +4,7 @@ from typing import Optional, List
 
 from pydantic import BaseModel
 
+from ..model import Issue
 
 class RevisionStamp(BaseModel):
     user: str
@@ -29,6 +30,7 @@ class StatusItem(BaseModel):
     status: JobStatus
     log: Optional[str]
     submitter: str
+    issues: Optional[list[Issue]]
 
 
 class Job(BaseModel):

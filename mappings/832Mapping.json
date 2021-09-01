@@ -29,10 +29,6 @@
                 "description": null
             },
             {
-                "field": "/measurement/sample/experiment/title",
-                "description": null
-            },
-            {
                 "field": "/measurement/sample/experimenter/name",
                 "description": null
             },
@@ -78,7 +74,6 @@
                         {"field": "/measurement/instrument/detector/model"},
                         {"field": "/measurement/instrument/detector/temperature"},
                         {"field": "/process/acquisition/dark_fields/dark_num_avg_of"},
-                        {"field": "/process/acquisition/description_1"},
                         {"field": "/process/acquisition/flat_fields/i0cycle"},
                         {"field": "/process/acquisition/flat_fields/i0_move_x"},
                         {"field": "/process/acquisition/flat_fields/i0_move_y"},

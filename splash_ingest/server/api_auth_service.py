@@ -1,8 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime
 import logging
-from logging import getLogger
-from threading import Thread, ThreadError
 from typing import List
 from uuid import uuid4
 

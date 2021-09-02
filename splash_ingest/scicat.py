@@ -169,7 +169,7 @@ class ScicatIngestor(IssueCollectorMixin):
         #     self.add_error(f"Error creating sample for {filepath}. Continuing without sample.", e)
         
         try:
-            scientific_metadata = self._extract_scientific_metadata(descriptor_doc, event_sample, run_start)
+            scientific_metadata = self._extract_scientific_metadata(descriptor_doc, event_sample, run_start=run_start)
         except Exception as e:
             self.add_error(f"Error getting scientific metadata. Continuing without.", e)
 
@@ -310,7 +310,7 @@ class ScicatIngestor(IssueCollectorMixin):
 
 
     @staticmethod
-    def _extract_scientific_metadata(descriptor, event_page, run_start):
+    def _extract_scientific_metadata(descriptor, event_page, run_start=None):
         return_dict = {k.replace(":", "/"): v for k, v in descriptor['configuration']['all']['data'].items()}
         if event_page:
             return_dict['data_sample'] = event_page

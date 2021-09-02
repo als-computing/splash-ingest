@@ -8,8 +8,8 @@ from pymongo import MongoClient
 from starlette.config import Config
 from starlette.status import HTTP_403_FORBIDDEN
 
-from .api_auth_service import init_api_service, verify_api_key
-from .ingest_service import (
+from splash_ingest.server.api_auth_service import init_api_service, verify_api_key
+from splash_ingest.server.ingest_service import (
     init_ingest_service,
     create_job,
     find_job,

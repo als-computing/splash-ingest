@@ -1,7 +1,6 @@
-from os import access
+from collections import OrderedDict
 import h5py
 import json
-import sys
 from datetime import datetime
 import hashlib
 import urllib
@@ -162,16 +161,15 @@ class ScicatIngestor(IssueCollectorMixin):
             logger.debug(f"{self.job_id} projected start doc: {str(project_start_doc)}")
         # make an access grop list that includes the name of the proposal and the name of the beamline
         access_groups = []
-        access_groups.append(projected_start_doc.get('proposal'))
         access_groups.append(projected_start_doc.get('beamline'))
-        owner_group = self.username
-        try:
-            self._create_sample(projected_start_doc, access_groups, owner_group)
-        except Exception as e:
-            self.add_error(f"Error creating sample for {filepath}. Continuing without sample.", e)
+        owner_group = projected_start_doc.get('proposal') 
+        # try:
+        #     self._create_sample(projected_start_doc, access_groups, owner_group)
+        # except Exception as e:
+        #     self.add_error(f"Error creating sample for {filepath}. Continuing without sample.", e)
         
         try:
-            scientific_metadata = self._extract_scientific_metadata(descriptor_doc, event_sample)
+            scientific_metadata = self._extract_scientific_metadata(descriptor_doc, event_sample, run_start)
         except Exception as e:
             self.add_error(f"Error getting scientific metadata. Continuing without.", e)
 
@@ -179,7 +177,8 @@ class ScicatIngestor(IssueCollectorMixin):
             self._create_raw_dataset(
                 projected_start_doc,
                 scientific_metadata,
-                access_groups, owner_group,
+                access_groups, 
+                owner_group,
                 filepath,
                 thumbnails)
         except Exception as e:
@@ -282,7 +281,7 @@ class ScicatIngestor(IssueCollectorMixin):
             "size": self._get_file_size(filepath),
             "dataFileList": [
                 {
-                    "path": str(filepath.absolute()),
+                    "path": str(filepath.name),
                     "size": self._get_file_size(filepath),
                     "time": self._get_file_mod_time(filepath),
                     "chk": "",  # do not do remote: getFileChecksumFromPathObj(filename)
@@ -311,11 +310,14 @@ class ScicatIngestor(IssueCollectorMixin):
 
 
     @staticmethod
-    def _extract_scientific_metadata(descriptor, event_page):
+    def _extract_scientific_metadata(descriptor, event_page, run_start):
         return_dict = {k.replace(":", "/"): v for k, v in descriptor['configuration']['all']['data'].items()}
         if event_page:
             return_dict['data_sample'] = event_page
-        return return_dict
+        if run_start:
+            return_dict['run_start_uid'] = run_start['uid']
+        
+        return OrderedDict(sorted(return_dict.items()))
 
     @staticmethod
     def _get_file_mod_time(pathobj):

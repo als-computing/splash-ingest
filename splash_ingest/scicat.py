@@ -80,7 +80,7 @@ class ScicatIngestor(IssueCollectorMixin):
             logger.error(f'{self.job_id} ** Error received: {response}')
             err = response.json()["error"]
             logger.error(f'{self.job_id} {err["name"]}, {err["statusCode"]}: {err["message"]}')
-            self.error(f'error getting token {err["name"]}, {err["statusCode"]}: {err["message"]}')
+            self.add_error(f'error getting token {err["name"]}, {err["statusCode"]}: {err["message"]}')
             return None
 
         data = response.json()

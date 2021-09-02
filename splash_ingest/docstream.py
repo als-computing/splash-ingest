@@ -226,7 +226,6 @@ class MappedH5Generator(IssueCollectorMixin):
                 logger.debug(f"Creating event with uid: {event['uid']}")
 
             if self._pack_pages:
-                logger.debug("event store")
                 self._events.append(event)
                 if datum:
                     self._datums.append(datum)
@@ -237,7 +236,6 @@ class MappedH5Generator(IssueCollectorMixin):
                     yield 'datum', datum
 
         if self._pack_pages:
-            logger.debug(f"packing pages: {stream_name}")
             if len(self._events) > 0:
                 yield "event_page", event_model.pack_event_page(*self._events)
             if len(self._datums) > 0:
@@ -381,9 +379,6 @@ def decode_key(key):
 def create_event(file, stream_name, timestamp, stream_mapping, resource_doc, stream_bundle, event_num):
     datum = None
     event = None
-    issues = None
-    logger.debug(f"assembling event {event_num}")
-
     event_data = {}
     event_timestamps = {}
     filled_fields = {}

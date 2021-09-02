@@ -1,0 +1,55 @@
+@startuml
+autonumber
+DataMover -> IngestService ++: new data
+IngestService -> CFS: read proposal number from file
+IngestService -> ALSShare: get globus shareId
+
+alt share does exist
+    ALSShare --> IngestService: return globus shareId and folder
+    IngestService -> CFS: copy file from data_mover to share location
+    IngestService -> SciCat: write globus share url to dataset
+else share does NOT exist
+    ALSShare --> IngestService: return none
+    IngestService --> IngestService: log error
+end
+
+@startuml
+autonumber 
+
+actor BeamlineScientist as bs
+
+bs -> ALSShare ++: Create a share
+ALSShare -> ALSHub: Get proposal info
+ALSShare -> Globus: create share
+ALSShare -> CFS: create directory for share
+ALSShare -> IngestService: update proposal/share db
+@enduml
+
+
+@startuml
+autonumber
+DataMover -> IngestService ++: new data
+IngestService -> CFS: read proposal number from file
+IngestService -> IngestService: get globus shareId
+
+alt share does exist
+    IngestService --> IngestService: return globus shareId and folder
+    IngestService -> CFS: copy file from data_mover to share location
+    IngestService -> SciCat: write globus share url to dataset
+else share does NOT exist
+    IngestService --> IngestService: return none
+    IngestService --> IngestService: log error
+end
+
+
+
+
+
+@enduml
+
+@startuml
+autonumber 
+User -> SciCat ++: click Globus Button
+SciCat -> GlobusWindow --: open Globus File Explorer with Share
+User -> GlobusWindow: begin transfer
+@enduml

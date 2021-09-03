@@ -161,12 +161,21 @@ class ScicatIngestor(IssueCollectorMixin):
             logger.debug(f"{self.job_id} projected start doc: {str(project_start_doc)}")
         # make an access grop list that includes the name of the proposal and the name of the beamline
         access_groups = []
-        access_groups.append(projected_start_doc.get('beamline'))
-        owner_group = projected_start_doc.get('proposal') 
-        # try:
-        #     self._create_sample(projected_start_doc, access_groups, owner_group)
-        # except Exception as e:
-        #     self.add_error(f"Error creating sample for {filepath}. Continuing without sample.", e)
+        if projected_start_doc.get('beamline'):  
+            access_groups.append(projected_start_doc.get('beamline'))
+        if projected_start_doc.get('proposal'):
+            access_groups.append(projected_start_doc.get('proposal'))
+        
+        # owner_group = projected_start_doc.get('proposal') 
+        # it would be nice for owner group to be the proposal id, so people on the proposal could
+        # edit the metadata...but some files don't have this field, and the import of OrigDataBlock fails with 
+        # an owner group.
+        owner_group = "8.3.2"  # 8.3.2 is what we get for staff from ALSHub
+        
+        try:
+            self._create_sample(projected_start_doc, access_groups, owner_group)
+        except Exception as e:
+            self.add_error(f"Error creating sample for {filepath}. Continuing without sample.", e)
         
         try:
             scientific_metadata = self._extract_scientific_metadata(descriptor_doc, event_sample, run_start=run_start)

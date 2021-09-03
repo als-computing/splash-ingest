@@ -69,15 +69,23 @@ def sigterm_handler(signum, frame):
 signal.signal(signal.SIGTERM, sigterm_handler)
 signal.signal(signal.SIGINT, sigterm_handler)
 
-ingest_thread = threading.Thread(target=poll_for_new_jobs, args=(
+# ingest_thread = threading.Thread(target=poll_for_new_jobs, args=(
+#     POLLER_SLEEP_SECONDS,
+#     SCICAT_BASEURL,
+#     SCICAT_INGEST_USER,
+#     SCICAT_INGEST_PASSWORD,
+#     terminate_requested,
+#     THUMBS_ROOT
+# ))
+
+# logger.info("starting polling thread")
+# ingest_thread.start()
+# ingest_thread.join()
+poll_for_new_jobs(
     POLLER_SLEEP_SECONDS,
     SCICAT_BASEURL,
     SCICAT_INGEST_USER,
     SCICAT_INGEST_PASSWORD,
     terminate_requested,
     THUMBS_ROOT
-))
-
-logger.info("starting polling thread")
-ingest_thread.start()
-ingest_thread.join()
+)

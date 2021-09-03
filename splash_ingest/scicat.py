@@ -163,7 +163,7 @@ class ScicatIngestor(IssueCollectorMixin):
         access_groups = []
         if projected_start_doc.get('beamline'):  
             access_groups.append(projected_start_doc.get('beamline'))
-        if projected_start_doc.get('proposal'):
+        if projected_start_doc.get('proposal') and projected_start_doc.get('proposal') != 'None':
             access_groups.append(projected_start_doc.get('proposal'))
         
         # owner_group = projected_start_doc.get('proposal') 
@@ -311,6 +311,7 @@ class ScicatIngestor(IssueCollectorMixin):
         }
         url = self.baseurl + f"{datasetType}/{urllib.parse.quote_plus(new_pid)}/origdatablocks"
         logger.info(f"{self.job_id} sending to {url} accessGroups: {access_groups}, ownerGroup: {owner_group}")
+        logger.info(f"datablock: {json.dumps(dataBlock)}")
         resp = self._send_to_scicat(url, dataBlock)
         if not resp.ok:
             err = resp.json()["error"]

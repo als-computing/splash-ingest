@@ -166,11 +166,11 @@ class ScicatIngestor(IssueCollectorMixin):
         if projected_start_doc.get('proposal') and projected_start_doc.get('proposal') != 'None':
             access_groups.append(projected_start_doc.get('proposal'))
         
-        # owner_group = projected_start_doc.get('proposal') 
-        # it would be nice for owner group to be the proposal id, so people on the proposal could
-        # edit the metadata...but some files don't have this field, and the import of OrigDataBlock fails with 
-        # an owner group.
-        owner_group = "8.3.2"  # 8.3.2 is what we get for staff from ALSHub
+        # this is a bit of a kludge. Add 8.3.2 into the access groups so that staff will be able to see it
+        access_groups.append('8.3.2')
+        # another kludge...if the owner isn't the logged in user (e.g. 'ingestor'), then the upload of origdatablock
+        # will fail because the logged in user won't be able to see the dataset object that it ingested
+        owner_group = self.username
         
         try:
             self._create_sample(projected_start_doc, access_groups, owner_group)

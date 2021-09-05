@@ -3,6 +3,7 @@ from datetime import datetime
 import json
 import logging
 from pathlib import Path
+from pprint import pprint
 import sys
 import time
 from typing import List
@@ -244,6 +245,7 @@ def ingest(submitter: str, job: Job, thumbs_root=None, scicat_baseurl=None, scic
             if name == 'start':
                 start_uid = document['uid']
                 start_doc = document
+                pprint(document)
             if name == 'descriptor':
                 descriptor_doc = document
             if name == 'event_page':

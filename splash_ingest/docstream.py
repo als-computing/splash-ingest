@@ -8,7 +8,7 @@ from dask import compute
 import event_model
 import numpy as np
 from PIL import Image, ImageOps
-from pprint import pprint
+
 from .util import IssueCollectorMixin
 from .model import (
     ConfigurationMapping,
@@ -277,7 +277,6 @@ class MappedH5Generator(IssueCollectorMixin):
                 self.add_warning(f"Error finding run_start mapping {mapping.field}", e)
                 continue
         logger.debug("leaving  _extract_metadata")
-        pprint(metadata)
         return metadata
 
     def _extract_stream_descriptor_keys(self, stream_mapping: StreamMapping):

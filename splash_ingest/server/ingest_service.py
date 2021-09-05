@@ -252,7 +252,7 @@ def ingest(submitter: str, job: Job, thumbs_root=None, scicat_baseurl=None, scic
                 try:
                     bluesky_context.serializer(name, document)
                 except Exception as e:
-                    logger.error(f"Exception storing document {name}", e)
+                    logger.error("Exception storing document %s", name, exc_info=1)
                     raise e
         logger.info(f"{job.id} databroker ingestion complete")
         issues: List[Issue] = doc_generator.issues

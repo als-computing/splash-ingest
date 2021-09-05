@@ -285,16 +285,16 @@ def test_key_transformation():
     key = "/don't panic"
     assert decode_key(encode_key(key)) == key, "Encoded then decoded key is equal"
 
+# data groups removed for now
+# def test_data_groups(sample_file):
+#     ingestor = MappedH5Generator([], Mapping(**mapping_dict), sample_file, "test_root")
+#     for name, doc in ingestor.generate_docstream():
+#         if name == 'start':
+#             assert doc['data_groups'] == []
+#             continue
 
-def test_data_groups(sample_file):
-    ingestor = MappedH5Generator([], Mapping(**mapping_dict), sample_file, "test_root")
-    for name, doc in ingestor.generate_docstream():
-        if name == 'start':
-            assert doc['data_groups'] == []
-            continue
-
-    ingestor = MappedH5Generator([], Mapping(**mapping_dict), sample_file, "test_root", data_groups=['bealine1', 'users1'])
-    for name, doc in ingestor.generate_docstream():
-        if name == 'start':
-            assert doc['data_groups'] == ['bealine1', 'users1']
-            continue
+    # ingestor = MappedH5Generator([], Mapping(**mapping_dict), sample_file, "test_root", data_groups=['bealine1', 'users1'])
+    # for name, doc in ingestor.generate_docstream():
+    #     if name == 'start':
+    #         assert doc['data_groups'] == ['bealine1', 'users1']
+    #         continue

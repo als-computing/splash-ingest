@@ -126,7 +126,7 @@ class MappedH5Generator(IssueCollectorMixin):
         self._run_bundle = event_model.compose_run(metadata=metadata)
         start_doc = self._run_bundle.start_doc
         start_doc['projections'] = self._mapping.projections
-        start_doc['data_groups'] = self._get_data_groups()
+        # start_doc['data_groups'] = self._get_data_groups()
         yield 'start', start_doc
         if can_debug:
             logger.debug(f"run: {start_doc['uid']} Start doc created")
@@ -152,12 +152,13 @@ class MappedH5Generator(IssueCollectorMixin):
         if len(self._issues) > 0:
             logger.info(f" run: {start_doc['uid']} had issues {str(self._issues)}")
 
-    def _get_data_groups(self):
-        # TODO intensely kludgy temporary solution to get data groups out of the file
-        dataset = self._file.get('/measurement/sample/experiment/proposal')
-        if dataset:
-            self._data_groups.append(self._get_dataset_value(self._file['/measurement/sample/experiment/proposal']))
-        return self._data_groups
+    # removed as it was creating bytes objects occasionally, blowing away serialization
+    # def _get_data_groups(self):
+    #     # TODO intensely kludgy temporary solution to get data groups out of the file
+    #     dataset = self._file.get('/measurement/sample/experiment/proposal')
+    #     if dataset:
+    #         self._data_groups.append(self._get_dataset_value(self._file['/measurement/sample/experiment/proposal']))
+    #     return self._data_groups
 
 
 

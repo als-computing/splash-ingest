@@ -245,7 +245,6 @@ def ingest(submitter: str, job: Job, thumbs_root=None, scicat_baseurl=None, scic
             if name == 'start':
                 start_uid = document['uid']
                 start_doc = document
-                pprint(document)
             if name == 'descriptor':
                 descriptor_doc = document
             if name == 'event_page':
@@ -255,6 +254,7 @@ def ingest(submitter: str, job: Job, thumbs_root=None, scicat_baseurl=None, scic
                     bluesky_context.serializer(name, document)
                 except Exception as e:
                     logger.error("Exception storing document %s", name, exc_info=1)
+                    pprint(document)
                     raise e
         logger.info(f"{job.id} databroker ingestion complete")
         issues: List[Issue] = doc_generator.issues

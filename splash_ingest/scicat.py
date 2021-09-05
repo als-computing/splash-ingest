@@ -7,7 +7,6 @@ import urllib
 import base64
 import logging
 from pathlib import Path
-from pprint import pprint
 import re
 from typing import List
 
@@ -396,7 +395,6 @@ def gen_ev_docs(scm: ScicatIngestor, filename: str, mapping_file: str):
                 continue
             else:
                 continue
-        pprint(ingestor.issues)
         scm.ingest_run(Path(filename), start_doc, descriptor_doc=descriptor, thumbnail=ingestor.thumbnails[0])
 
 

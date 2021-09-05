@@ -277,7 +277,7 @@ class MappedH5Generator(IssueCollectorMixin):
                 self.add_warning(f"Error finding run_start mapping {mapping.field}", e)
                 continue
         logger.debug("leaving  _extract_metadata")
-        pprint.print(metadata)
+        pprint(metadata)
         return metadata
 
     def _extract_stream_descriptor_keys(self, stream_mapping: StreamMapping):

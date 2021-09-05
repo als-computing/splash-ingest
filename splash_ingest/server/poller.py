@@ -28,7 +28,7 @@ def init_logging():
     ch.setLevel(INGEST_LOG_LEVEL)
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     ch.setFormatter(formatter)
-
+    logger.handlers.clear()
     logger.addHandler(ch)
     logger.setLevel(INGEST_LOG_LEVEL)
 

@@ -1,5 +1,5 @@
 # SciCat Ingestion
-At present, the ingestion workflow depends on Databroker. It accepts a stream of event_model documents and projects the start document using the projection found in the mapping file provided. See [example file](../mappings/832Mapping.json).
+The splash_ingest service can ingest Datasets and related objects (Attachments, OrigDatablocks, Samples). In this process, it updates fields on those objects that affect access controls for those objects that affect who can read and update them within the SciCat application.
 
 ## Backgroud: Access Controls in SciCat
 The SciCat ingestor maps data from data sets to SciCat's access control scheme.

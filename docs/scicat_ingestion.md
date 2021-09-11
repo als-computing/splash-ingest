@@ -37,8 +37,8 @@ User1 is on ALS-X000-001:
 ``` json
 
 {
-    name: "User1",
-    accessGroups: ["ALS-X000", "ALS-X000-001"]
+    "name": "User1",
+    "accessGroups": ["ALS-X000", "ALS-X000-001"]
 }
 ```
 
@@ -46,8 +46,8 @@ User2 is on ALS-X000-001:
 ``` json
 
 {
-    name: "User2",
-    accessGroups: ["ALS-X0001"]
+    "name": "User2",
+    "accessGroups": ["ALS-X0001"]
 }
 ```
 
@@ -55,8 +55,8 @@ BeamlineScientist is on at beamline bl0.0.0:
 ``` json
 
 {
-    name: "BeamlineScientist",
-    accessGroups: ["bl0.0.0"]
+    "name": "BeamlineScientist",
+    "accessGroups": ["bl0.0.0"]
 }
 ```
 
@@ -64,9 +64,9 @@ A Dataset is ingested at beamline 0.0.0 for proposal ALS-X000:
 ``` json
 
 {
-    proposal: "ALS-X000",
-    ownerGroup: "ALS-X000",
-    accessGroups: ["bl0.0.0"]
+    "proposal": "ALS-X000",
+    "ownerGroup": "ALS-X000",
+    "accessGroups": ["bl0.0.0"]
 }
 ```
 

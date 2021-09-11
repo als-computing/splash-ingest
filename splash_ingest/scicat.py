@@ -157,22 +157,16 @@ class ScicatIngestor(IssueCollectorMixin):
             return
         
         if can_debug:
-            logger.debug(f"{self.job_id} projected start doc: {str(project_start_doc)}")
-        # make an access grop list that includes the name of the proposal and the name of the beamline
-        access_groups = []
-        if projected_start_doc.get('beamline'):  
-            access_groups.append(projected_start_doc.get('beamline'))
-        if projected_start_doc.get('proposal') and projected_start_doc.get('proposal') != 'None':
-            access_groups.append(projected_start_doc.get('proposal'))
+            logger.debug(f"{self.job_id} projected start doc: {str(projected_start_doc)}")
+      
         
-        # this is a bit of a kludge. Add 8.3.2 into the access groups so that staff will be able to see it
-        access_groups.append('8.3.2')
-        # another kludge...if the owner isn't the logged in user (e.g. 'ingestor'), then the upload of origdatablock
-        # will fail because the logged in user won't be able to see the dataset object that it ingested
-        owner_group = self.username
-        
+        access_controls = calculate_access_controls(self.username, projected_start_doc)
+
         try:
-            self._create_sample(projected_start_doc, access_groups, owner_group)
+            self._create_sample(
+                projected_start_doc,
+                access_controls.get("access_groups"), 
+                access_controls.get("owner_group"))
         except Exception as e:
             self.add_error(f"Error creating sample for {filepath}. Continuing without sample.", e)
         
@@ -185,12 +179,13 @@ class ScicatIngestor(IssueCollectorMixin):
             self._create_raw_dataset(
                 projected_start_doc,
                 scientific_metadata,
-                access_groups, 
-                owner_group,
+                access_controls.get("access_groups"), 
+                access_controls.get("owner_group"),
                 filepath,
                 thumbnails)
         except Exception as e:
             self.add_error("Error creating raw data set.", e)
+
 
     def _create_sample(self, projected_start_doc, access_groups, owner_group):
         sample = {
@@ -272,7 +267,12 @@ class ScicatIngestor(IssueCollectorMixin):
             for thumbnail in thumbnails:
                 if thumbnail.exists():
                     logger.info(f"Uploading thumbnail {thumbnail}")
-                    resp = self._addThumbnail(new_pid, thumbnail, datasetType="RawDatasets", owner_group=owner_group)
+                    resp = self._addThumbnail(
+                        new_pid, 
+                        thumbnail, 
+                        datasetType="RawDatasets", 
+                        owner_group=owner_group, 
+                        access_groups=access_groups)
                     logger.info(f"Thumnail written {thumbnail}")
                     if resp.ok:
                         logger.info(f"{self.job_id} thumbnail created for {new_pid}")
@@ -335,7 +335,7 @@ class ScicatIngestor(IssueCollectorMixin):
         return str(datetime.fromtimestamp(pathobj.lstat().st_mtime))
 
 
-    def _addThumbnail(self, datasetId=None, filename=None, datasetType="RawDatasets", owner_group=None):
+    def _addThumbnail(self, datasetId=None, filename=None, datasetType="RawDatasets", owner_group=None, access_groups=None):
 
         def encodeImageToThumbnail(filename, imType='jpg'):
             logging.info(f"Creating thumbnail for dataset: {filename}")
@@ -351,6 +351,7 @@ class ScicatIngestor(IssueCollectorMixin):
             "thumbnail": encodeImageToThumbnail(filename),
             "datasetId": datasetId,
             "ownerGroup": owner_group,
+            "accessGroups": access_groups
         }
         logging.info(f"Adding thumbnail for dataset: {datasetId}")
         url = self.baseurl + f"{datasetType}/{urllib.parse.quote_plus(datasetId)}/attachments"
@@ -397,6 +398,27 @@ def gen_ev_docs(scm: ScicatIngestor, filename: str, mapping_file: str):
                 continue
         scm.ingest_run(Path(filename), start_doc, descriptor_doc=descriptor, thumbnail=ingestor.thumbnails[0])
 
+
+def calculate_access_controls(username, projected_start_doc):
+    # make an access grop list that includes the name of the proposal and the name of the beamline
+    access_groups = []
+    # set owner_group to username so that at least someone has access in case no proposal number is found
+    owner_group = username
+    if projected_start_doc.get('beamline'):  
+        access_groups.append(projected_start_doc.get('beamline'))
+        # temporary mapping while beamline controls process request to match beamline name with what comes
+        # from ALSHub
+        if projected_start_doc.get('beamline') =="bl832":
+             access_groups.append("8.3.2")
+
+    if projected_start_doc.get('proposal') and projected_start_doc.get('proposal') != 'None':
+        owner_group = projected_start_doc.get('proposal')
+    
+    # this is a bit of a kludge. Add 8.3.2 into the access groups so that staff will be able to see it
+
+
+    return {"ownerGroup": owner_group,
+            "accessGroups": access_groups}
 
 def project_start_doc(start_doc, intent):
     found_projection = None

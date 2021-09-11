@@ -6,7 +6,12 @@ import h5py
 import pytest
 import requests_mock
 
-from ..scicat import project_start_doc, ScicatIngestor, build_search_terms
+from ..scicat import (
+    project_start_doc,
+    ScicatIngestor,
+    build_search_terms,
+    calculate_access_controls)
+
 from ..model import Issue
 
 @pytest.fixture
@@ -92,6 +97,41 @@ def test_scicate_ingest(sample_file):
         assert len(issues) == 0
 
 
+# def test_scicat_ingest_posts(sample_file):
+#     from requests.models import Response
+#     def mock_post(url, json={}, **kwargs):
+        
+#         def token():
+#             return {"id": "foobar"}
+        
+#         def sample():
+#             return {"sampleId": "dataset_id"}
+
+#         def data_set():
+#             return {"pid": "42"}
+
+#         def orig_datablock():
+#             return {"response": "random"}
+
+#         response = Response()
+#         response.status_code = 200
+#         if url == "http://localhost:3000/api/v3/Users/login":
+#             response.json = token
+#         elif url == "http://localhost:3000/api/v3/Samples":
+#             response.json = sample
+#         elif url == "http://localhost:3000/api/v3/RawDatasets/replaceOrCreate":
+#             response.json = data_set
+#         elif url == "http://localhost:3000/api/v3/RawDatasets/42/origdatablocks":
+#             response.json = orig_datablock
+#         return response
+
+
+#     issues: List[Issue] = []
+#     scicat = ScicatIngestor("dataset_id", issues, host="localhost:3000")
+#     import requests
+#     requests.post = mock_post
+#     scicat.ingest_run(Path(sample_file.filename), start_doc, descriptor_doc)
+#     assert len(issues) == 0
     
 
 def test_build_search_terms():
@@ -140,7 +180,37 @@ def test_extract_scientific_metadata():
 
     
 
+def test_access_controls():
+    # no propsal, no beamline
+    projected_start_doc = {}
+    username = "slartibartfast"
+    access_controls = calculate_access_controls(username, projected_start_doc)
+    assert access_controls["ownerGroup"] == "slartibartfast"
+    assert access_controls["accessGroups"] == []
 
+    # propoosal and no beamline
+    projected_start_doc = {"proposal": "42"}
+    access_controls = calculate_access_controls(username, projected_start_doc)
+    assert access_controls["ownerGroup"] == "42"
+
+    # no propoosal and beamline
+    projected_start_doc = {"beamline": "10.3.1"}
+    access_controls = calculate_access_controls(username, projected_start_doc)
+    assert access_controls["ownerGroup"] == "slartibartfast"
+    assert access_controls["accessGroups"] == ["10.3.1"]
+
+    # proposal and beamline
+    projected_start_doc = {"beamline": "10.3.1", "proposal": "42"}
+    access_controls = calculate_access_controls(username, projected_start_doc)
+    assert access_controls["ownerGroup"] == "42"
+    assert access_controls["accessGroups"] == ["10.3.1"]
+
+    # special 8.3.2 mapping
+    projected_start_doc = {"beamline": "bl832", "proposal": "42"}
+    access_controls = calculate_access_controls(username, projected_start_doc)
+    assert access_controls["ownerGroup"] == "42"
+    assert "8.3.2" in access_controls["accessGroups"]
+    assert "bl832" in access_controls["accessGroups"]
 
 start_doc = {
     "uid": "dataset_id",

@@ -38,6 +38,7 @@ jobs:
         pytest
 
   container_webservice:
+    needs: test
     env:
       REGISTRY: ghcr.io
       IMAGE_NAME: ${{ github.repository }}
@@ -74,6 +75,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
   
   container_poller:
+    needs: test
     env:
       REGISTRY: ghcr.io
       IMAGE_NAME: ${{ github.repository }}

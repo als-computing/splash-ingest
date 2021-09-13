@@ -12,7 +12,7 @@ DATABROKER_DB_URI = config("DATABROKER_DB_URI", cast=str, default="mongodb://loc
 DATABROKER_DB_NAME = config("DATABROKER_DB_NAME", cast=str, default="databroker")
 INGEST_DB_URI = config("INGEST_DB_URI", cast=str, default="mongodb://localhost:27017/ingest")
 INGEST_DB_NAME = config("INGEST_DB_NAME", cast=str, default="ingest")
-INGEST_LOG_LEVEL = config("SPLASH_LOG_LEVEL", cast=str, default="INFO")
+INGEST_LOG_LEVEL = config("INGEST_LOG_LEVEL", cast=str, default="INFO")
 POLLER_MAX_THREADS = config("POLLER_MAX_THREADS", cast=int, default=1)
 POLLER_SLEEP_SECONDS = config("POLLER_SLEEP_SECONDS", cast=int, default=5)
 THUMBS_ROOT = config("THUMBS_ROOT", cast=str, default="thumbs")

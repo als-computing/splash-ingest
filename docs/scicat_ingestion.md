@@ -1,5 +1,5 @@
 # SciCat Ingestion
-At present, the ingestion workflow depends on Databroker. It accepts a stream of event_model documents and projects the start document using the projection found in the mapping file provided. See [example file](../mappings/832Mapping.json).
+The splash_ingest service can ingest Datasets and related objects (Attachments, OrigDatablocks, Samples). In this process, it updates fields on those objects that affect access controls for those objects that affect who can read and update them within the SciCat application.
 
 ## Backgroud: Access Controls in SciCat
 The SciCat ingestor maps data from data sets to SciCat's access control scheme.
@@ -30,3 +30,48 @@ If a proposal number is not found in the incoming dataset, the ingestor will add
 ### accessGroups
 If the beamline identifier is found in the incoming dataset, it is added to the `accessGroups` so that ALS Staff can associated with that beamline (via a call to ALSHub on login) can view the ingest SciCat objects.
 
+# Examples
+In the following examples, most fields from the User and Dataset objects have been ommitted for brevity.
+
+User1 is on ALS-X000-001:
+``` json
+
+{
+    "name": "User1",
+    "accessGroups": ["ALS-X000", "ALS-X000-001"]
+}
+```
+
+User2 is on ALS-X000-001:
+``` json
+
+{
+    "name": "User2",
+    "accessGroups": ["ALS-X0001"]
+}
+```
+
+BeamlineScientist is on at beamline bl0.0.0:
+``` json
+
+{
+    "name": "BeamlineScientist",
+    "accessGroups": ["bl0.0.0"]
+}
+```
+
+A Dataset is ingested at beamline 0.0.0 for proposal ALS-X000:
+``` json
+
+{
+    "proposal": "ALS-X000",
+    "ownerGroup": "ALS-X000",
+    "accessGroups": ["bl0.0.0"]
+}
+```
+
+When User1 logs in, the Dataset will be in their list of available Datasets. AUser will also be able to add Labels and Upload additional attachments to the Dataset.
+
+When User2 logs in, the Dataset will not appear in their list or be available in searches.
+
+When BeamlineScientist logs in, the Dataset will be in their list of available Datasets. They will not be able to add labels or additional attachments.

@@ -159,7 +159,7 @@ class ScicatIngestor(IssueCollectorMixin):
         if can_debug:
             logger.debug(f"{self.job_id} projected start doc: {str(projected_start_doc)}")
       
-        
+        logger.debug(f"projected start doc: {json.dumps(project_start_doc)}")
         access_controls = calculate_access_controls(self.username, projected_start_doc)
         logger.info(f"Access controls for  {filepath}  access_groups: {access_controls.get('access_groups')} "\
                     f"owner_group: {access_controls.get('owner_group')}")

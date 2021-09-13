@@ -42,7 +42,7 @@ jobs:
     env:
       REGISTRY: ghcr.io
       IMAGE_NAME: ${{ github.repository }}
-    name: Build docker image and publish to ghrc.io
+    name: Build webservice docker image and publish to ghrc.io
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -79,7 +79,7 @@ jobs:
     env:
       REGISTRY: ghcr.io
       IMAGE_NAME: ${{ github.repository }}
-    name: Build docker image and publish to ghrc.io
+    name: Build poller docker image and publish to ghrc.io
     runs-on: ubuntu-latest
     permissions:
       contents: read

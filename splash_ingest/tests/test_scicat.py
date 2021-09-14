@@ -185,32 +185,32 @@ def test_access_controls():
     projected_start_doc = {}
     username = "slartibartfast"
     access_controls = calculate_access_controls(username, projected_start_doc)
-    assert access_controls["ownerGroup"] == "slartibartfast"
-    assert access_controls["accessGroups"] == []
+    assert access_controls["owner_group"] == "slartibartfast"
+    assert access_controls["access_groups"] == []
 
     # propoosal and no beamline
     projected_start_doc = {"proposal": "42"}
     access_controls = calculate_access_controls(username, projected_start_doc)
-    assert access_controls["ownerGroup"] == "42"
+    assert access_controls["owner_group"] == "42"
 
     # no propoosal and beamline
     projected_start_doc = {"beamline": "10.3.1"}
     access_controls = calculate_access_controls(username, projected_start_doc)
-    assert access_controls["ownerGroup"] == "slartibartfast"
-    assert access_controls["accessGroups"] == ["10.3.1"]
+    assert access_controls["owner_group"] == "slartibartfast"
+    assert access_controls["access_groups"] == ["10.3.1"]
 
     # proposal and beamline
     projected_start_doc = {"beamline": "10.3.1", "proposal": "42"}
     access_controls = calculate_access_controls(username, projected_start_doc)
-    assert access_controls["ownerGroup"] == "42"
-    assert access_controls["accessGroups"] == ["10.3.1"]
+    assert access_controls["owner_group"] == "42"
+    assert access_controls["access_groups"] == ["10.3.1"]
 
     # special 8.3.2 mapping
     projected_start_doc = {"beamline": "bl832", "proposal": "42"}
     access_controls = calculate_access_controls(username, projected_start_doc)
-    assert access_controls["ownerGroup"] == "42"
-    assert "8.3.2" in access_controls["accessGroups"]
-    assert "bl832" in access_controls["accessGroups"]
+    assert access_controls["owner_group"] == "42"
+    assert "8.3.2" in access_controls["access_groups"]
+    assert "bl832" in access_controls["access_groups"]
 
 start_doc = {
     "uid": "dataset_id",

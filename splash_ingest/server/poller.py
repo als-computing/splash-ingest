@@ -24,13 +24,14 @@ logger = logging.getLogger("splash_ingest")
 
 
 def init_logging():
+    logger.setLevel(INGEST_LOG_LEVEL)
     ch = logging.StreamHandler()
     ch.setLevel(INGEST_LOG_LEVEL)
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     ch.setFormatter(formatter)
     logger.handlers.clear()
     logger.addHandler(ch)
-    logger.setLevel(INGEST_LOG_LEVEL)
+   
 
 
 init_logging()

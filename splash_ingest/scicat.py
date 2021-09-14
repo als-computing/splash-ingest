@@ -159,7 +159,7 @@ class ScicatIngestor(IssueCollectorMixin):
         if can_debug:
             logger.debug(f"{self.job_id} projected start doc: {json.dumps(projected_start_doc)}")
         access_controls = calculate_access_controls(self.username, projected_start_doc)
-        logger.info(f"Access controls for  {filepath}  access_groups: {access_controls.get('access_groups')} "\
+        logger.info(f"Access controls for  {filepath}  access_groups: {access_controls.get('accessroups')} "\
                     f"owner_group: {access_controls.get('owner_group')}")
         try:
             self._create_sample(
@@ -416,8 +416,8 @@ def calculate_access_controls(username, projected_start_doc):
     # this is a bit of a kludge. Add 8.3.2 into the access groups so that staff will be able to see it
 
 
-    return {"ownerGroup": owner_group,
-            "accessGroups": access_groups}
+    return {"owner_group": owner_group,
+            "access_groups": access_groups}
 
 def project_start_doc(start_doc, intent):
     found_projection = None

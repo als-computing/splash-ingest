@@ -17,8 +17,7 @@ from .docstream import MappedH5Generator
 from .model import Mapping, Issue
 from .util import IssueCollectorMixin
 
-logger = logging.getLogger("splash_ingest
-")
+logger = logging.getLogger("splash_ingest")
 can_debug = logger.isEnabledFor(logging.DEBUG)
 
 

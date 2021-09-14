@@ -197,13 +197,14 @@ def test_access_controls():
     projected_start_doc = {"beamline": "10.3.1"}
     access_controls = calculate_access_controls(username, projected_start_doc)
     assert access_controls["owner_group"] == "slartibartfast"
-    assert access_controls["access_groups"] == ["10.3.1"]
+    assert "10.3.1" in access_controls["access_groups"] 
+    assert "slartibartfast" in access_controls["access_groups"] 
 
     # proposal and beamline
     projected_start_doc = {"beamline": "10.3.1", "proposal": "42"}
     access_controls = calculate_access_controls(username, projected_start_doc)
     assert access_controls["owner_group"] == "42"
-    assert access_controls["access_groups"] == ["10.3.1"]
+    assert "10.3.1" in access_controls["access_groups"] 
 
     # special 8.3.2 mapping
     projected_start_doc = {"beamline": "bl832", "proposal": "42"}

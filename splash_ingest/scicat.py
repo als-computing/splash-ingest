@@ -17,7 +17,8 @@ from .docstream import MappedH5Generator
 from .model import Mapping, Issue
 from .util import IssueCollectorMixin
 
-logger = logging.getLogger("splash_ingest")
+logger = logging.getLogger("splash_ingest
+")
 can_debug = logger.isEnabledFor(logging.DEBUG)
 
 
@@ -405,6 +406,8 @@ def calculate_access_controls(username, projected_start_doc):
     owner_group = username
     if projected_start_doc.get('beamline'):  
         access_groups.append(projected_start_doc.get('beamline'))
+        # username lets the user see the Dataset in order to ingest objects after the Dataset
+        access_groups.append(username)
         # temporary mapping while beamline controls process request to match beamline name with what comes
         # from ALSHub
         if projected_start_doc.get('beamline') =="bl832":

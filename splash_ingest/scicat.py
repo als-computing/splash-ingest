@@ -406,7 +406,7 @@ def calculate_access_controls(username, projected_start_doc):
     if projected_start_doc.get('beamline'):  
         access_groups.append(projected_start_doc.get('beamline'))
         # username lets the user see the Dataset in order to ingest objects after the Dataset
-        # access_groups.append(username)
+        access_groups.append(username)
         # temporary mapping while beamline controls process request to match beamline name with what comes
         # from ALSHub
         if projected_start_doc.get('beamline') =="bl832":

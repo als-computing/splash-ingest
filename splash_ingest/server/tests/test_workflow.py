@@ -22,9 +22,8 @@ from ..model import JobStatus, StatusItem
 
 @pytest.fixture(scope="session", autouse=True)
 def init_mongomock():
-    databroker_db = MongoClient().databroker_db
     ingest_db = MongoClient().ingest_db
-    init_ingest_service(ingest_db, databroker_db)
+    init_ingest_service(ingest_db)
     init_api_key(ingest_db)
     create_api_client('user1', 'sirius_cybernetics_gpp', 'door_operation')
 

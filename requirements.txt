@@ -5,6 +5,7 @@ h5py>=3
 numpy
 passlib
 pydantic
+pyscicat
 pytz
 suitcase-jsonl
 tzlocal

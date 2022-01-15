@@ -61,13 +61,11 @@ app = FastAPI(
 @app.on_event("startup")
 async def startup_event():
     logger.info('starting api server')
-    logger.info(f"DATABROKER_DB_URI {DATABROKER_DB_URI}")
-    logger.info(f"DATABROKER_DB_NAME {DATABROKER_DB_NAME}") 
     logger.info(f"INGEST_DB_URI {INGEST_DB_URI}")
     logger.info(f"INGEST_DB_NAME {INGEST_DB_NAME}")
     databroker_db = MongoClient(DATABROKER_DB_URI)[DATABROKER_DB_NAME]
     ingest_db = MongoClient(INGEST_DB_URI)[INGEST_DB_NAME]
-    init_ingest_service(ingest_db, databroker_db)
+    init_ingest_service(ingest_db)
     init_api_service(ingest_db)
     # start_job_poller()
 

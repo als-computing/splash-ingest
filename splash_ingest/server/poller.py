@@ -8,8 +8,6 @@ from starlette.config import Config
 from splash_ingest.server.ingest_service import init_ingest_service, poll_for_new_jobs
 
 config = Config(".env")
-DATABROKER_DB_URI = config("DATABROKER_DB_URI", cast=str, default="mongodb://localhost:27017/databroker")
-DATABROKER_DB_NAME = config("DATABROKER_DB_NAME", cast=str, default="databroker")
 INGEST_DB_URI = config("INGEST_DB_URI", cast=str, default="mongodb://localhost:27017/ingest")
 INGEST_DB_NAME = config("INGEST_DB_NAME", cast=str, default="ingest")
 INGEST_LOG_LEVEL = config("INGEST_LOG_LEVEL", cast=str, default="INFO")
@@ -38,8 +36,6 @@ init_logging()
 
 
 logger.info("starting poller")
-logger.info(f"DATABROKER_DB_URI {DATABROKER_DB_URI}")
-logger.info(f"DATABROKER_DB_NAME {DATABROKER_DB_NAME}")
 logger.info(f"INGEST_DB_URI {INGEST_DB_URI}")
 logger.info(f"INGEST_DB_NAME {INGEST_DB_NAME}")
 logger.info(f"INGEST_LOG_LEVEL {INGEST_LOG_LEVEL}")
@@ -49,10 +45,9 @@ logger.info(f"THUMBS_ROOT {THUMBS_ROOT}")
 logger.info(f"SCICAT_BASEURL {SCICAT_BASEURL}")
 logger.info(f"SCICAT_INGEST_USER {SCICAT_INGEST_USER}")
 logger.info("SCICAT_INGEST_PASSWORD ...")
-databroker_db = MongoClient(DATABROKER_DB_URI)[DATABROKER_DB_NAME]
 ingest_db = MongoClient(INGEST_DB_URI)[INGEST_DB_NAME]
 
-init_ingest_service(ingest_db, databroker_db)
+init_ingest_service(ingest_d)
 
 
 class TerminateRequested():

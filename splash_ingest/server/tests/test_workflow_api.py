@@ -20,16 +20,12 @@ def client():
     client = TestClient(app)
     return client
 
-
-def databroker_db(mongo_client):
-    return MongoClient().databroker_db
-
 def ingest_db(mongo_client):
     return MongoClient().ingest_db
 
 def init_svc():
     mongo_client = pymongo.MongoClient()
-    init_ingest_service(ingest_db(mongo_client), databroker_db(mongo_client))
+    init_ingest_service(ingest_db(mongo_client))
     init_api_service(ingest_db(mongo_client))
 
 def test_create_job_api(client: TestClient):

@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 from datetime import datetime
+from  importlib.util import spec_from_file_location, module_from_spec
 import json
 import logging
 from pathlib import Path
-from pprint import pprint
 import sys
 import time
 from typing import List
@@ -16,10 +16,7 @@ from pydantic import parse_obj_as
 from pymongo import MongoClient
 from pymongo.collection import Collection
 
-from suitcase.mongo_normalized import Serializer
-
-from splash_ingest.model import Mapping, Issue, Severity
-from splash_ingest.docstream import MappedH5Generator
+from splash_ingest.model import Mapping
 from .model import (
     IngestType,
     Job,
@@ -27,7 +24,7 @@ from .model import (
     StatusItem,
     RevisionStamp
 )
-from splash_ingest.scicat import ScicatIngestor
+# from pyscicat import from_credentials
 
 logger = logging.getLogger("splash_ingest.ingest_service")
 # these context objects help us inject dependencies, useful
@@ -53,10 +50,10 @@ class BlueskyContext():
 service_context = ServiceMongoCollectionsContext()
 bluesky_context = BlueskyContext()
 
+# Load scicat reader python files from from ../readers
+reader_modules = {}
 
-def init_ingest_service(ingest_db: MongoClient, databroker_db: MongoClient):
-    bluesky_context.serializer = Serializer(metadatastore_db=databroker_db, asset_registry_db=databroker_db)
-    bluesky_context.db = databroker_db
+def init_ingest_service(ingest_db: MongoClient, readers_dir: Path = None):
     service_context.db = ingest_db
     service_context.ingest_jobs = ingest_db['ingest_jobs']
     service_context.ingest_jobs.create_index(
@@ -93,6 +90,20 @@ def init_ingest_service(ingest_db: MongoClient, databroker_db: MongoClient):
         unique=True
     )
 
+    # Load all reader modules from the reader directory
+    if not readers_dir:
+        readers_dir = Path(Path().absolute(), 'readers')
+    for file in readers_dir.glob('*.py'):
+        try:
+            spec = spec_from_file_location(file.stem, file)
+            reader_module = module_from_spec(spec)
+            spec.loader.exec_module(reader_module)
+            if reader_module.spec in reader_modules.keys():
+                logger.warning(f'Reader module {file} contains a duplicate spec: {reader_module.spec}. Ignoring.')
+                continue
+            reader_modules[reader_module.spec] = reader_module
+        except Exception as e:
+            logger.error(f' Error loading {file}: {e}')
 
 def create_job(
         submitter,
@@ -233,63 +244,42 @@ def ingest(submitter: str, job: Job, thumbs_root=None, scicat_baseurl=None, scic
         logger.info(f"mapping found for {job.id} for file {job.document_path}") 
         mapping = mapping_with_revision
         file = h5py.File(job.document_path, "r")
-        doc_generator = MappedH5Generator( [], mapping, file, 'mapping_ingestor', thumbs_root=thumbs_root, pack_pages=True)
-        # we always generate a docstream, but depending on the ingestors listed in the job we may do different things
-        # with the docstream
 
-        start_uid = None
-        start_doc = {}
-        descriptor_doc = {}
-        event_sample = {}
-        for name, document in doc_generator.generate_docstream():
-            if name == 'start':
-                start_uid = document['uid']
-                start_doc = document
-            if name == 'descriptor':
-                descriptor_doc = document
-            if name == 'event_page':
-                event_sample = sample_event_page(document)
-            if IngestType.databroker in job.ingest_types:
-                try:
-                    bluesky_context.serializer(name, document)
-                except Exception as e:
-                    logger.error("Exception storing document %s", name, exc_info=1)
-                    pprint(document)
-                    raise e
-        logger.info(f"{job.id} databroker ingestion complete")
-        issues: List[Issue] = doc_generator.issues
+
         if IngestType.scicat in job.ingest_types:
-            logger.info(f"{job.id} scicat ingestion starting")
-            scicat_ingestor = ScicatIngestor(
-                start_uid,
-                issues,
-                baseurl=scicat_baseurl,
-                username=scicat_user,
-                password=scicat_password,
-                job_id=job.id)
-            scicat_ingestor.ingest_run(
-                Path(job.document_path),
-                start_doc,
-                descriptor_doc,
-                event_sample=event_sample,
-                thumbnails=doc_generator.thumbnails)
-            logger.info(f"{job.id} scicat ingestion complete")
-        job_log = f'ingested start doc: {start_uid}'
+            
 
-        if issues and len(issues) > 0:
-            status = JobStatus.complete_with_issues
-            for issue in issues:
-                if issue.severity == Severity.error:
-                    status = JobStatus.error
-                job_log += f"\n :  {issue.msg}"
-                if issue.exception:
-                    job_log += f"\n    Exception: {issue.exception}"
-            status = StatusItem(time=datetime.utcnow(), status=status,
-                                submitter=submitter, log=job_log, issues=issues)
-        else:
-            status = StatusItem(time=datetime.utcnow(), status=JobStatus.successful, submitter=submitter, log=job_log)
-        set_job_status(job.id, status)
-        return start_uid
+            logger.info(f"{job.id} scicat ingestion starting")
+        #     scicat_ingestor = ScicatIngestor(
+        #         start_uid,
+        #         issues,
+        #         baseurl=scicat_baseurl,
+        #         username=scicat_user,
+        #         password=scicat_password,
+        #         job_id=job.id)
+        #     scicat_ingestor.ingest_run(
+        #         Path(job.document_path),
+        #         start_doc,
+        #         descriptor_doc,
+        #         event_sample=event_sample,
+        #         thumbnails=doc_generator.thumbnails)
+        #     logger.info(f"{job.id} scicat ingestion complete")
+        # job_log = f'ingested start doc: {start_uid}'
+
+        # if issues and len(issues) > 0:
+        #     status = JobStatus.complete_with_issues
+        #     for issue in issues:
+        #         if issue.severity == Severity.error:
+        #             status = JobStatus.error
+        #         job_log += f"\n :  {issue.msg}"
+        #         if issue.exception:
+        #             job_log += f"\n    Exception: {issue.exception}"
+        #     status = StatusItem(time=datetime.utcnow(), status=status,
+        #                         submitter=submitter, log=job_log, issues=issues)
+        # else:
+        #     status = StatusItem(time=datetime.utcnow(), status=JobStatus.successful, submitter=submitter, log=job_log)
+        # set_job_status(job.id, status)
+        # return start_uid
 
     except Exception:
         exc_type, exc_value, exc_tb = sys.exc_info()

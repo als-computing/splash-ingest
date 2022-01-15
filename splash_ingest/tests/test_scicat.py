@@ -7,8 +7,6 @@ import pytest
 import requests_mock
 
 from ..scicat import (
-    project_start_doc,
-    ScicatIngestor,
     build_search_terms,
     calculate_access_controls)
 

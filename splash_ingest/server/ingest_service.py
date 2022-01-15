@@ -27,13 +27,15 @@ from .model import (
 # from pyscicat import from_credentials
 
 logger = logging.getLogger("splash_ingest.ingest_service")
-# these context objects help us inject dependencies, useful
-# in unit testing
+
 
 
 class JobNotFoundError(Exception):
     pass
 
+
+# these context objects help us inject dependencies, useful
+# in unit testing
 @dataclass
 class ServiceMongoCollectionsContext():
     db: MongoClient = None
@@ -41,14 +43,7 @@ class ServiceMongoCollectionsContext():
     ingest_mappings: Collection = None
 
 
-@dataclass
-class BlueskyContext():
-    serializer = None
-    db: MongoClient = None
-
-
 service_context = ServiceMongoCollectionsContext()
-bluesky_context = BlueskyContext()
 
 # Load scicat reader python files from from ../readers
 reader_modules = {}
@@ -104,6 +99,7 @@ def init_ingest_service(ingest_db: MongoClient, readers_dir: Path = None):
             reader_modules[reader_module.spec] = reader_module
         except Exception as e:
             logger.error(f' Error loading {file}: {e}')
+
 
 def create_job(
         submitter,

@@ -16,27 +16,31 @@ from splash_ingest.server.ingest_service import (
     find_unstarted_jobs,
     create_mapping,
     find_mapping,
-    JobNotFoundError
-    )
+    JobNotFoundError,
+)
 
 from splash_ingest.model import Mapping
 from .model import Job, IngestType
 
 API_KEY_NAME = "api_key"
-INGEST_JOBS_API = 'ingest_jobs'
+INGEST_JOBS_API = "ingest_jobs"
 
 api_key_query = APIKeyQuery(name=API_KEY_NAME, auto_error=False)
 api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
 api_key_cookie = APIKeyCookie(name=API_KEY_NAME, auto_error=False)
 
 config = Config(".env")
-DATABROKER_DB_URI = config("DATABROKER_DB_URI", cast=str, default="mongodb://localhost:27017/databroker")
+DATABROKER_DB_URI = config(
+    "DATABROKER_DB_URI", cast=str, default="mongodb://localhost:27017/databroker"
+)
 DATABROKER_DB_NAME = config("DATABROKER_DB_NAME", cast=str, default="databroker")
-INGEST_DB_URI = config("INGEST_DB_URI", cast=str, default="mongodb://localhost:27017/ingest")
+INGEST_DB_URI = config(
+    "INGEST_DB_URI", cast=str, default="mongodb://localhost:27017/ingest"
+)
 INGEST_DB_NAME = config("INGEST_DB_NAME", cast=str, default="ingest")
 INGEST_LOG_LEVEL = config("INGEST_LOG_LEVEL", cast=str, default="INFO")
 
-logger = logging.getLogger('splash_ingest.api_auth')
+logger = logging.getLogger("splash_ingest.api_auth")
 
 
 def init_logging():
@@ -44,7 +48,9 @@ def init_logging():
     ch = logging.StreamHandler()
     # ch.setLevel(logging.INFO)
     # root_logger.addHandler(ch)
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
     ch.setFormatter(formatter)
     logger.addHandler(ch)
     logger.setLevel(INGEST_LOG_LEVEL)
@@ -52,18 +58,18 @@ def init_logging():
 
 init_logging()
 
-app = FastAPI(    
+app = FastAPI(
     openapi_url="/api/ingest/openapi.json",
     docs_url="/api/ingest/docs",
-    redoc_url="/api/ingest/redoc",)
+    redoc_url="/api/ingest/redoc",
+)
 
 
 @app.on_event("startup")
 async def startup_event():
-    logger.info('starting api server')
+    logger.info("starting api server")
     logger.info(f"INGEST_DB_URI {INGEST_DB_URI}")
     logger.info(f"INGEST_DB_NAME {INGEST_DB_NAME}")
-    databroker_db = MongoClient(DATABROKER_DB_URI)[DATABROKER_DB_NAME]
     ingest_db = MongoClient(INGEST_DB_URI)[INGEST_DB_NAME]
     init_ingest_service(ingest_db)
     init_api_service(ingest_db)
@@ -73,7 +79,7 @@ async def startup_event():
 async def get_api_key_from_request(
     api_key_query: str = Security(api_key_query),
     api_key_header: str = Security(api_key_header),
-    api_key_cookie: str = Security(api_key_cookie)
+    api_key_cookie: str = Security(api_key_cookie),
 ):
 
     if api_key_query:
@@ -90,7 +96,9 @@ async def get_api_key_from_request(
 
 class CreateJobRequest(BaseModel):
     file_path: str = Field(description="path to where file to ingest is located")
-    mapping_name: str = Field(description="mapping name, used to find mapping file in database")
+    mapping_name: str = Field(
+        description="mapping name, used to find mapping file in database"
+    )
     ingest_types: List[IngestType] = Field(description="Type of ingestions to be done")
 
 
@@ -99,28 +107,38 @@ class CreateJobResponse(BaseModel):
     job_id: Optional[str] = Field(description="uid of newly created job, if created")
 
 
-@app.post("/api/ingest/jobs", tags=['ingest_jobs'], response_description="Returns information about the status of creating the Job")
-async def submit_job(request: CreateJobRequest, api_key: APIKey = Depends(get_api_key_from_request)) \
-         -> CreateJobResponse:
+@app.post(
+    "/api/ingest/jobs",
+    tags=["ingest_jobs"],
+    response_description="Returns information about the status of creating the Job",
+)
+async def submit_job(
+    request: CreateJobRequest, api_key: APIKey = Depends(get_api_key_from_request)
+) -> CreateJobResponse:
     client_key: APIKey = verify_api_key(api_key)
     if not client_key:
-        logger.info('forbidden  {api_key}')
+        logger.info("forbidden  {api_key}")
         raise HTTPException(status_code=403)
 
     job = create_job(
-        client_key.client,
-        request.file_path,
-        request.mapping_name,
-        request.ingest_types)
+        client_key.client, request.file_path, request.mapping_name, request.ingest_types
+    )
     return CreateJobResponse(message="success", job_id=job.id)
-  
 
-@app.get("/api/ingest/jobs/{job_id}", tags=['ingest_jobs'], response_model=Job, response_description="Returns the requested Job")
-async def get_job(job_id: str, api_key: APIKey = Depends(get_api_key_from_request)) -> Job:
+
+@app.get(
+    "/api/ingest/jobs/{job_id}",
+    tags=["ingest_jobs"],
+    response_model=Job,
+    response_description="Returns the requested Job",
+)
+async def get_job(
+    job_id: str, api_key: APIKey = Depends(get_api_key_from_request)
+) -> Job:
     try:
         client_key: APIKey = verify_api_key(api_key)
         if not client_key:
-            logger.info('forbidden  {api_key}')
+            logger.info("forbidden  {api_key}")
             raise HTTPException(status_code=403)
         job = find_job(job_id)
         return job
@@ -131,12 +149,19 @@ async def get_job(job_id: str, api_key: APIKey = Depends(get_api_key_from_reques
         raise e
 
 
-@app.get("/api/ingest/jobs", tags=['ingest_jobs'], response_model=List[Job], response_description="Returns all Jobs waiting to be started")
-async def get_unstarted_jobs(api_key: APIKey = Depends(get_api_key_from_request)) -> List[Job]:
+@app.get(
+    "/api/ingest/jobs",
+    tags=["ingest_jobs"],
+    response_model=List[Job],
+    response_description="Returns all Jobs waiting to be started",
+)
+async def get_unstarted_jobs(
+    api_key: APIKey = Depends(get_api_key_from_request),
+) -> List[Job]:
     try:
         client_key: APIKey = verify_api_key(api_key)
         if not client_key:
-            logger.info('forbidden  {api_key}')
+            logger.info("forbidden  {api_key}")
             raise HTTPException(status_code=403)
         jobs = find_unstarted_jobs()
         return jobs
@@ -150,13 +175,19 @@ class CreateMappingResponse(BaseModel):
     message: str
 
 
-@app.post("/api/ingest/mappings", tags=['mappings'],response_model=CreateMappingResponse, response_description="Information about the creation of the Mapping")
-async def insert_mapping(mapping: Mapping, 
-                         api_key: APIKey = Depends(get_api_key_from_request)) -> CreateMappingResponse:
+@app.post(
+    "/api/ingest/mappings",
+    tags=["mappings"],
+    response_model=CreateMappingResponse,
+    response_description="Information about the creation of the Mapping",
+)
+async def insert_mapping(
+    mapping: Mapping, api_key: APIKey = Depends(get_api_key_from_request)
+) -> CreateMappingResponse:
     try:
         client_key: APIKey = verify_api_key(api_key)
         if not client_key:
-            logger.info('forbidden  {api_key}')
+            logger.info("forbidden  {api_key}")
             raise HTTPException(status_code=403)
         mapping_id = create_mapping(client_key.client, mapping)
         return CreateMappingResponse(mapping_id=mapping_id, message="success")
@@ -165,16 +196,22 @@ async def insert_mapping(mapping: Mapping,
         raise e
 
 
-@app.get("/api/ingest/mappings/{mapping_id}", tags=['mappings'], response_model=Mapping, response_description="Return a Mapping")
-async def get_mapping(mapping_id: str, api_key: APIKey = Depends(get_api_key_from_request)) -> Mapping:
+@app.get(
+    "/api/ingest/mappings/{mapping_id}",
+    tags=["mappings"],
+    response_model=Mapping,
+    response_description="Return a Mapping",
+)
+async def get_mapping(
+    mapping_id: str, api_key: APIKey = Depends(get_api_key_from_request)
+) -> Mapping:
     try:
         client_key: APIKey = verify_api_key(api_key)
         if not client_key:
-            logger.info('forbidden  {api_key}')
+            logger.info("forbidden  {api_key}")
             raise HTTPException(status_code=403)
         mapping = find_mapping(client_key.client, mapping_id)
         return mapping
     except Exception as e:
         logger.error(e)
         raise e
- 

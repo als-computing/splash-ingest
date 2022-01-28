@@ -1,11 +1,12 @@
 from datetime import datetime
 from enum import Enum
 
-from typing import Optional, List
+from typing import List, Optional
 
 from pydantic import BaseModel
 
-from ..model import Issue
+from splash_ingest.ingestors.utils import Issue
+
 
 class RevisionStamp(BaseModel):
     user: str
@@ -14,16 +15,16 @@ class RevisionStamp(BaseModel):
 
 
 class IngestType(str, Enum):
-    databroker = 'databroker'
-    scicat = 'scicat'
+    databroker = "databroker"
+    scicat = "scicat"
 
 
 class JobStatus(str, Enum):
-    submitted = 'submitted'
-    running = 'running'
-    complete_with_issues = 'complete_with_issues'
-    successful = 'successful'
-    error = 'error'
+    submitted = "submitted"
+    running = "running"
+    complete_with_issues = "complete_with_issues"
+    successful = "successful"
+    error = "error"
 
 
 class StatusItem(BaseModel):

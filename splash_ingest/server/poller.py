@@ -1,6 +1,7 @@
 import logging
 import signal
-import threading
+
+# import threading
 
 from pymongo import MongoClient
 from starlette.config import Config
@@ -8,13 +9,17 @@ from starlette.config import Config
 from splash_ingest.server.ingest_service import init_ingest_service, poll_for_new_jobs
 
 config = Config(".env")
-INGEST_DB_URI = config("INGEST_DB_URI", cast=str, default="mongodb://localhost:27017/ingest")
+INGEST_DB_URI = config(
+    "INGEST_DB_URI", cast=str, default="mongodb://localhost:27017/ingest"
+)
 INGEST_DB_NAME = config("INGEST_DB_NAME", cast=str, default="ingest")
 INGEST_LOG_LEVEL = config("INGEST_LOG_LEVEL", cast=str, default="INFO")
 POLLER_MAX_THREADS = config("POLLER_MAX_THREADS", cast=int, default=1)
 POLLER_SLEEP_SECONDS = config("POLLER_SLEEP_SECONDS", cast=int, default=5)
 THUMBS_ROOT = config("THUMBS_ROOT", cast=str, default="thumbs")
-SCICAT_BASEURL = config("SCICAT_BASEURL", cast=str, default="http://localhost:3000/api/v3")
+SCICAT_BASEURL = config(
+    "SCICAT_BASEURL", cast=str, default="http://localhost:3000/api/v3"
+)
 SCICAT_INGEST_USER = config("SCICAT_INGEST_USER", cast=str, default="ingest")
 SCICAT_INGEST_PASSWORD = config("SCICAT_INGEST_PASSWORD", cast=str, default="aman")
 
@@ -25,11 +30,12 @@ def init_logging():
     logger.setLevel(INGEST_LOG_LEVEL)
     ch = logging.StreamHandler()
     ch.setLevel(INGEST_LOG_LEVEL)
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
     ch.setFormatter(formatter)
     logger.handlers.clear()
     logger.addHandler(ch)
-   
 
 
 init_logging()
@@ -47,10 +53,10 @@ logger.info(f"SCICAT_INGEST_USER {SCICAT_INGEST_USER}")
 logger.info("SCICAT_INGEST_PASSWORD ...")
 ingest_db = MongoClient(INGEST_DB_URI)[INGEST_DB_NAME]
 
-init_ingest_service(ingest_d)
+init_ingest_service(ingest_db)
 
 
-class TerminateRequested():
+class TerminateRequested:
     state = False
 
 
@@ -83,5 +89,5 @@ poll_for_new_jobs(
     SCICAT_INGEST_USER,
     SCICAT_INGEST_PASSWORD,
     terminate_requested,
-    THUMBS_ROOT
+    THUMBS_ROOT,
 )

@@ -2,20 +2,18 @@ import datetime
 import h5py
 import pytest
 from mongomock import MongoClient
-from splash_ingest.server.api_auth_service import create_api_client, init_api_service as init_api_key
+from splash_ingest.server.api_auth_service import (
+    create_api_client,
+    init_api_service as init_api_key,
+)
 from splash_ingest.server.model import IngestType
-from splash_ingest.model import Mapping
 from ..ingest_service import (
-    bluesky_context,
     find_job,
     find_unstarted_jobs,
     init_ingest_service,
     service_context,
     create_job,
     set_job_status,
-    create_mapping,
-    find_mapping,
-    ingest
 )
 from ..model import JobStatus, StatusItem
 
@@ -25,14 +23,18 @@ def init_mongomock():
     ingest_db = MongoClient().ingest_db
     init_ingest_service(ingest_db)
     init_api_key(ingest_db)
-    create_api_client('user1', 'sirius_cybernetics_gpp', 'door_operation')
+    create_api_client("user1", "sirius_cybernetics_gpp", "door_operation")
 
 
 def test_jobs_init():
-    assert service_context.ingest_jobs is not None, "test that init creates a collection"
+    assert (
+        service_context.ingest_jobs is not None
+    ), "test that init creates a collection"
     assert len(service_context.ingest_jobs.index_information()) == 4
 
-    assert service_context.ingest_mappings is not None, "test that init creates a collection"
+    assert (
+        service_context.ingest_mappings is not None
+    ), "test that init creates a collection"
     assert len(service_context.ingest_mappings.index_information()) == 3
 
 
@@ -48,15 +50,20 @@ def test_job_create():
     return_job = find_job(job.id)
     assert return_job.submit_time is not None, "return Job gets a submit time"
     assert return_job.submitter == "user1", "return Job gets provided submitter"
-    assert return_job.status == JobStatus.submitted, "return Job gets provided submitter"
+    assert (
+        return_job.status == JobStatus.submitted
+    ), "return Job gets provided submitter"
 
 
 def test_update_non_existant_job():
-    result = set_job_status("42",
-                            StatusItem(
-                                submitter="slartibartfast",
-                                time=datetime.datetime.utcnow(),
-                                status=JobStatus.running))
+    result = set_job_status(
+        "42",
+        StatusItem(
+            submitter="slartibartfast",
+            time=datetime.datetime.utcnow(),
+            status=JobStatus.running,
+        ),
+    )
     assert not result, "tested return code for non-existent job"
 
 
@@ -70,19 +77,29 @@ def test_query_unstarted_jobs():
     for job in jobs:
         assert job.status == JobStatus.submitted
         time = datetime.datetime.utcnow()
-        set_job_status(job.id,
-                       StatusItem(
-                           time=time,
-                           submitter="slartibartfast",
-                           status=JobStatus.running,
-                           log="rebuild earth"))
+        set_job_status(
+            job.id,
+            StatusItem(
+                time=time,
+                submitter="slartibartfast",
+                status=JobStatus.running,
+                log="rebuild earth",
+            ),
+        )
         job = find_job(job.id)
         assert len(job.status_history) > 1
-        assert job.status_history[-1].submitter == "slartibartfast", "most recent status correct user"
-        assert (abs(job.status_history[-1].time - time) < datetime.timedelta(milliseconds=1)), \
-            "most recent status data within Mongo accuracy of milliseconds"
-        assert job.status_history[-1].status == JobStatus.running, "most recent status correct user"
-        assert job.status_history[-1].log == "rebuild earth", "most recent status correct user"
+        assert (
+            job.status_history[-1].submitter == "slartibartfast"
+        ), "most recent status correct user"
+        assert abs(job.status_history[-1].time - time) < datetime.timedelta(
+            milliseconds=1
+        ), "most recent status data within Mongo accuracy of milliseconds"
+        assert (
+            job.status_history[-1].status == JobStatus.running
+        ), "most recent status correct user"
+        assert (
+            job.status_history[-1].log == "rebuild earth"
+        ), "most recent status correct user"
 
     jobs = list(find_unstarted_jobs())
     assert len(jobs) == 0, "all jobs should be set to started"
@@ -90,64 +107,10 @@ def test_query_unstarted_jobs():
 
 @pytest.fixture
 def sample_file(tmp_path):
-    file = h5py.File(tmp_path / 'test.hdf5', 'w')
-    file.create_dataset('/measurement/sample/name', data=b'my sample', dtype='|S256')
+    file = h5py.File(tmp_path / "test.hdf5", "w")
+    file.create_dataset("/measurement/sample/name", data=b"my sample", dtype="|S256")
     file.close()
-    file = h5py.File(tmp_path / 'test.hdf5', 'r')
+    file = h5py.File(tmp_path / "test.hdf5", "r")
     yield file
-    print('closing file')
+    print("closing file")
     file.close()
-
-
-def test_ingest_databroker(sample_file, init_mongomock):
-    mapping = Mapping(**mapping_dict)
-    create_mapping("slartibartfast", mapping)
-    mapping = find_mapping("slartibartfast", "magrathia")
-    assert mapping.resource_spec == "MultiKeySlice", "test a field"
-    job = create_job(
-        "user1",
-        sample_file.filename,
-        "magrathia",
-        [IngestType.databroker])
-    start_uid = ingest("slartibartfast", job)
-    job = find_job(job.id)
-    assert job is not None
-    assert job.status == JobStatus.successful, f'injest completed  {job.status_history[-1]}'
-    assert bluesky_context.db['run_start'].find_one({"uid": start_uid}) is not None, "job wrote start doc"
-
-
-# def test_ingest_types(sample_file, init_mongomock,  monkeypatch):
-#     from suitcase.mongo_normalized import Serializer
-    
-#     class MockSerializer(Serializer):
-#         def __call__(self, name, doc):
-#             return super().__call__(name, doc)
-
-#     def db_call(name, doc):
-#         print(name, doc)
-#     databroker_db = MongoClient().databroker_db
-    
-#     # serializer = MockSerializer(metadatastore_db=databroker_db, asset_registry_db=databroker_db)
-#     monkeypatch.setattr("suitcase.mongo_normalized", "Serializer", MockSerializer)
-#     serializer("start", {})
-#     # mapping = Mapping(**mapping_dict)
-#     # create_mapping("slartibartfast", mapping)
-#     # mapping = find_mapping("slartibartfast", "magrathia")
-#     # assert mapping.resource_spec == "MultiKeySlice", "test a field"
-#     # job = create_job(
-#     #     "user1",
-#     #     sample_file.filename,
-#     #     "magrathia",
-#     #     [IngestType.databroker])
-#     # start_uid = ingest("slartibartfast", job)
-
-
-mapping_dict = {
-        "name": "magrathia",
-        "description": "test descriptions",
-        "version": "42",
-        "resource_spec": "MultiKeySlice",
-        "md_mappings": [
-            {"field": "/measurement/sample/name"}
-        ],
-    }

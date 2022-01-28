@@ -4,7 +4,7 @@ from area_detector_handlers.handlers import HDF5DatasetSliceHandlerPureNumpy
 
 
 class MultiKeyHDF5DatasetSliceHandler(HDF5DatasetSliceHandlerPureNumpy):
-    return_type = {'delayed': True}
+    return_type = {"delayed": True}
     _datasets = {}
 
     def __init__(self, filename, frame_per_point=1):
@@ -19,5 +19,5 @@ class MultiKeyHDF5DatasetSliceHandler(HDF5DatasetSliceHandlerPureNumpy):
         start = point_number * self._fpp
         stop = (point_number + 1) * self._fpp
         # print(str(point_number))
-        return dask.array.from_array(self._datasets[key])[start:stop][0, :, :] 
+        return dask.array.from_array(self._datasets[key])[start:stop][0, :, :]
         # return self._datasets[key][start:stop][0, :, :]

@@ -1,4 +1,3 @@
-import os
 import sys
 import time
 
@@ -10,17 +9,16 @@ def create_job(url, api_key, mapping_name, file_path):
     request = {
         "file_path": file_path,
         "mapping_name": mapping_name,
-        "ingest_types": [
-            "databroker",
-            "scicat"
-        ]
-        }
+        "ingest_types": ["databroker", "scicat"],
+    }
+    print(url + f"/?api_key={api_key}")
     resp = requests.post(url + f"/?api_key={api_key}", json=request)
     if resp.ok:
-        return resp.json()['job_id']
+        return resp.json()["job_id"]
 
     else:
-        raise Exception("job creation failed", resp.json()['detail'])
+        raise Exception("job creation failed", resp.json()["detail"])
+
 
 def check_job(url, api_key, job_id) -> Job:
     resp = requests.get(url + f"/{job_id}?api_key={api_key}")
@@ -28,11 +26,10 @@ def check_job(url, api_key, job_id) -> Job:
         return Job(**resp.json())
 
     else:
-        raise Exception("job status check failed", resp.json()['detail'])
+        raise Exception("job status check failed", resp.json()["detail"])
 
 
 if __name__ == "__main__":
-    
     if len(sys.argv) != 5:
         print("")
         print("usage: python client_ingest.py <url> <api_key> <mapping_name> <h5file>")

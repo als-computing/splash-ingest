@@ -1,104 +1,102 @@
 from dataclasses import dataclass
 from datetime import datetime
+from importlib.util import spec_from_file_location, module_from_spec
 import json
 import logging
 from pathlib import Path
-from pprint import pprint
 import sys
 import time
 from typing import List
 import traceback
 from uuid import uuid4
 
-import h5py
 import pandas as pd
 from pydantic import parse_obj_as
 from pymongo import MongoClient
 from pymongo.collection import Collection
 
-from suitcase.mongo_normalized import Serializer
+from splash_ingest.model import Mapping
+from .model import IngestType, Job, JobStatus, StatusItem, RevisionStamp
 
-from splash_ingest.model import Mapping, Issue, Severity
-from splash_ingest.docstream import MappedH5Generator
-from .model import (
-    IngestType,
-    Job,
-    JobStatus,
-    StatusItem,
-    RevisionStamp
-)
-from splash_ingest.scicat import ScicatIngestor
+from splash_ingest.ingestors.utils import Issue, Severity
+
+from pyscicat.client import from_credentials
 
 logger = logging.getLogger("splash_ingest.ingest_service")
-# these context objects help us inject dependencies, useful
-# in unit testing
 
 
 class JobNotFoundError(Exception):
     pass
 
+
+# these context objects help us inject dependencies, useful
+# in unit testing
 @dataclass
-class ServiceMongoCollectionsContext():
+class ServiceMongoCollectionsContext:
     db: MongoClient = None
     ingest_jobs: Collection = None
     ingest_mappings: Collection = None
 
 
-@dataclass
-class BlueskyContext():
-    serializer = None
-    db: MongoClient = None
-
-
 service_context = ServiceMongoCollectionsContext()
-bluesky_context = BlueskyContext()
+
+# Load scicat reader python files from from ../readers
+ingestor_modules = {}
 
 
-def init_ingest_service(ingest_db: MongoClient, databroker_db: MongoClient):
-    bluesky_context.serializer = Serializer(metadatastore_db=databroker_db, asset_registry_db=databroker_db)
-    bluesky_context.db = databroker_db
+def init_ingest_service(ingest_db: MongoClient, ingestors_dir: Path = None):
     service_context.db = ingest_db
-    service_context.ingest_jobs = ingest_db['ingest_jobs']
-    service_context.ingest_jobs.create_index(
-        [
-            ('submit_time', -1)
-        ]
-    )
+    service_context.ingest_jobs = ingest_db["ingest_jobs"]
+    service_context.ingest_jobs.create_index([("submit_time", -1)])
+
+    service_context.ingest_jobs.create_index([("status", -1)])
 
     service_context.ingest_jobs.create_index(
         [
-            ('status', -1)
-        ]
-    )
-
-    service_context.ingest_jobs.create_index(
-        [
-            ('id', 1),
+            ("id", 1),
         ],
-        unique=True
+        unique=True,
     )
 
-    service_context.ingest_mappings = ingest_db['ingest_mappings']
+    service_context.ingest_mappings = ingest_db["ingest_mappings"]
     service_context.ingest_mappings.create_index(
         [
-            ('name', -1),
-            ('version', -1),
+            ("name", -1),
+            ("version", -1),
         ],
-        unique=True
+        unique=True,
     )
     service_context.ingest_mappings.create_index(
         [
-            ('id', 1),
+            ("id", 1),
         ],
-        unique=True
+        unique=True,
     )
+
+    # Load all reader modules from the reader directory
+    if not ingestors_dir:
+        ingestors_dir = Path(Path().absolute(), "splash_ingest", "ingestors")
+    for file in ingestors_dir.glob("ingest_*.py"):
+        try:
+            spec = spec_from_file_location(file.stem, file)
+            ingestor_module = module_from_spec(spec)
+            spec.loader.exec_module(ingestor_module)
+            if ingestor_module.ingest_spec in ingestor_modules.keys():
+                logger.warning(
+                    f"Reader module {file} contains a duplicate spec: {ingestor_module.spec}. Ignoring."
+                )
+                continue
+            ingestor_modules[ingestor_module.ingest_spec] = ingestor_module
+            logger.info(
+                f"loaded ingestor with spec {ingestor_module.ingest_spec} from {file}"
+            )
+        except Exception:
+            logger.exception(f" Error loading {file}")
 
 
 def create_job(
-        submitter,
-        document_path: str,
-        mapping_id: str,
-        ingest_types: List[IngestType]):
+    submitter, document_path: str, mapping_id: str, ingest_types: List[IngestType]
+):
 
     job = Job(document_path=document_path, ingest_types=ingest_types)
     job.id = str(uuid4())
@@ -106,12 +104,11 @@ def create_job(
     job.submit_time = datetime.utcnow()
     job.submitter = submitter
     job.status = JobStatus.submitted
-    job.status_history.append(StatusItem(
-        time=job.submit_time,
-        status=job.status,
-        submitter=submitter))
+    job.status_history.append(
+        StatusItem(time=job.submit_time, status=job.status, submitter=submitter)
+    )
     service_context.ingest_jobs.insert_one(job.dict())
-    # TODO check that file exists and throw error 
+    # TODO check that file exists and throw error
     return job
 
 
@@ -128,15 +125,19 @@ def find_unstarted_jobs() -> List[Job]:
 
 
 def set_job_status(job_id, status_item: StatusItem):
-    update_result = service_context.ingest_jobs.update_one({"id": job_id},
-                                                       {"$set": {
-                                                            "start_time": status_item.time,
-                                                            "status": status_item.status,
-                                                            "submitter": status_item.submitter}})
-    update_result = service_context.ingest_jobs.update_one({"id": job_id},
-                                                       {"$push": {
-                                                            "status_history":
-                                                            status_item.dict()}})
+    update_result = service_context.ingest_jobs.update_one(
+        {"id": job_id},
+        {
+            "$set": {
+                "start_time": status_item.time,
+                "status": status_item.status,
+                "submitter": status_item.submitter,
+            }
+        },
+    )
+    update_result = service_context.ingest_jobs.update_one(
+        {"id": job_id}, {"$push": {"status_history": status_item.dict()}}
+    )
     return update_result.modified_count == 1
 
 
@@ -144,7 +145,6 @@ def find_mapping(submitter, mapping_id: str) -> Mapping:
     mapping_dict = service_context.ingest_mappings.find_one({"name": mapping_id})
     if mapping_dict is None:
         return None
-    revision = mapping_dict.pop('revision')
     return Mapping(**mapping_dict)
 
 
@@ -152,8 +152,8 @@ def create_mapping(submitter, mapping: Mapping):
     id = str(uuid4())
     revision = RevisionStamp(user=submitter, time=datetime.utcnow(), version_id=id)
     insert_dict = mapping.dict()
-    insert_dict['id'] = id
-    insert_dict['revision'] = revision.dict()
+    insert_dict["id"] = id
+    insert_dict["revision"] = revision.dict()
     service_context.ingest_mappings.insert_one(insert_dict)
     return id
 
@@ -164,7 +164,7 @@ def poll_for_new_jobs(
     scicat_user,
     scicat_password,
     terminate_requested,
-    thumbs_root=None
+    thumbs_root=None,
 ):
 
     logger.info(f"Beginning polling, waiting {sleep_interval} each time")
@@ -178,18 +178,29 @@ def poll_for_new_jobs(
                 time.sleep(sleep_interval)
             else:
                 job: Job = job_list[-1]
-                logger.info(f"ingesting path: {job.document_path} mapping: {job.mapping_id}")
-                ingest('system',
-                       job_list[-1],
-                       thumbs_root,
-                       scicat_baseurl,
-                       scicat_user,
-                       scicat_password)
+                logger.info(
+                    f"ingesting path: {job.document_path} mapping: {job.mapping_id}"
+                )
+                ingest(
+                    "system",
+                    job_list[-1],
+                    thumbs_root,
+                    scicat_baseurl,
+                    scicat_user,
+                    scicat_password,
+                )
         except Exception as e:
-            logger.exception('polling thread exception', e)
+            logger.exception("polling thread exception", e)
 
 
-def ingest(submitter: str, job: Job, thumbs_root=None, scicat_baseurl=None, scicat_user=None, scicat_password=None) -> str:
+def ingest(
+    submitter: str,
+    job: Job,
+    thumbs_root=None,
+    scicat_baseurl=None,
+    scicat_user=None,
+    scicat_password=None,
+) -> str:
     """Updates job status and calls ingest method specified in job
 
     Parameters
@@ -208,74 +219,50 @@ def ingest(submitter: str, job: Job, thumbs_root=None, scicat_baseurl=None, scic
         logger.info(f"{job.id} started job {job.id}")
 
         # this can be run on many processes, so
-        # we can use thread locks to assure that the 
+        # we can use thread locks to assure that the
         # job hasn't already been started, so check here first. Not perfect...
         persisted_job = find_job(job.id)
         if persisted_job.status != JobStatus.submitted:
-            logger.info(f"{job.id} on document {job.document_path} already started, exiting.")
+            logger.info(
+                f"{job.id} on document {job.document_path} already started, exiting."
+            )
             return
 
-        set_job_status(job.id,
-                       StatusItem(
-                        time=datetime.utcnow(),
-                        submitter=job.submitter,
-                        status=JobStatus.running,
-                        log='Starting job'))
-        mapping_with_revision = find_mapping(submitter, job.mapping_id)
+        set_job_status(
+            job.id,
+            StatusItem(
+                time=datetime.utcnow(),
+                submitter=job.submitter,
+                status=JobStatus.running,
+                log="Starting job",
+            ),
+        )
 
-        if mapping_with_revision is None:
-            job_log = f"{job.id} no mapping found for {job.mapping_id}"
-            logger.info(job_log)
-            set_job_status(job.id, StatusItem(time=datetime.utcnow(),
-                           status=JobStatus.error, submitter=submitter, log=job_log))
-            return
+        issues = []
+        ingestor_module = ingestor_modules.get(job.mapping_id)
+        if not ingestor_module:
+            issues.append(
+                Issue(
+                    severity=Severity.error,
+                    msg=f"mapping is not configured {job.document_path} and mapping {job.mapping_id}",
+                )
+            )
+            logger.warn(
+                f"ingest job {job.document_path} and mapping {job.mapping_id} failed, \
+                          mapping is not configured"
+            )
 
-        logger.info(f"mapping found for {job.id} for file {job.document_path}") 
-        mapping = mapping_with_revision
-        file = h5py.File(job.document_path, "r")
-        doc_generator = MappedH5Generator( [], mapping, file, 'mapping_ingestor', thumbs_root=thumbs_root, pack_pages=True)
-        # we always generate a docstream, but depending on the ingestors listed in the job we may do different things
-        # with the docstream
-
-        start_uid = None
-        start_doc = {}
-        descriptor_doc = {}
-        event_sample = {}
-        for name, document in doc_generator.generate_docstream():
-            if name == 'start':
-                start_uid = document['uid']
-                start_doc = document
-            if name == 'descriptor':
-                descriptor_doc = document
-            if name == 'event_page':
-                event_sample = sample_event_page(document)
-            if IngestType.databroker in job.ingest_types:
-                try:
-                    bluesky_context.serializer(name, document)
-                except Exception as e:
-                    logger.error("Exception storing document %s", name, exc_info=1)
-                    pprint(document)
-                    raise e
-        logger.info(f"{job.id} databroker ingestion complete")
-        issues: List[Issue] = doc_generator.issues
-        if IngestType.scicat in job.ingest_types:
+        if job.mapping_id in ingestor_modules:
             logger.info(f"{job.id} scicat ingestion starting")
-            scicat_ingestor = ScicatIngestor(
-                start_uid,
-                issues,
-                baseurl=scicat_baseurl,
-                username=scicat_user,
-                password=scicat_password,
-                job_id=job.id)
-            scicat_ingestor.ingest_run(
-                Path(job.document_path),
-                start_doc,
-                descriptor_doc,
-                event_sample=event_sample,
-                thumbnails=doc_generator.thumbnails)
-            logger.info(f"{job.id} scicat ingestion complete")
-        job_log = f'ingested start doc: {start_uid}'
+            scicat_client = from_credentials(
+                scicat_baseurl, scicat_user, scicat_password
+            )
+            dataset_id = ingestor_module.ingest(
+                scicat_client, scicat_user, job.document_path, Path(thumbs_root), issues
+            )
+            logger.info(f"ingested {dataset_id}")
 
+        job_log = f"ingested dataset: {job.document_path} as {dataset_id}"
         if issues and len(issues) > 0:
             status = JobStatus.complete_with_issues
             for issue in issues:
@@ -284,26 +271,41 @@ def ingest(submitter: str, job: Job, thumbs_root=None, scicat_baseurl=None, scic
                 job_log += f"\n :  {issue.msg}"
                 if issue.exception:
                     job_log += f"\n    Exception: {issue.exception}"
-            status = StatusItem(time=datetime.utcnow(), status=status,
-                                submitter=submitter, log=job_log, issues=issues)
+            status = StatusItem(
+                time=datetime.utcnow(),
+                status=status,
+                submitter=submitter,
+                log=job_log,
+                issues=issues,
+            )
         else:
-            status = StatusItem(time=datetime.utcnow(), status=JobStatus.successful, submitter=submitter, log=job_log)
+            status = StatusItem(
+                time=datetime.utcnow(),
+                status=JobStatus.successful,
+                submitter=submitter,
+                log=job_log,
+            )
         set_job_status(job.id, status)
-        return start_uid
+        return dataset_id
 
     except Exception:
         exc_type, exc_value, exc_tb = sys.exc_info()
         job_log = traceback.format_exception(exc_type, exc_value, exc_tb)
-        status = StatusItem(time=datetime.utcnow(), status=JobStatus.error, submitter=submitter, log=str(job_log))
+        status = StatusItem(
+            time=datetime.utcnow(),
+            status=JobStatus.error,
+            submitter=submitter,
+            log=str(job_log),
+        )
         set_job_status(job.id, status)
 
 
 def sample_event_page(event_page, sample_size=10):
-    df = pd.DataFrame(data=event_page['data'])
+    df = pd.DataFrame(data=event_page["data"])
     df = df.rename(columns=lambda s: s.replace(":", "/"))
     if len(df) == 0:
         return {}
     step = len(df) // sample_size
     if step == 0:
         step == 1
-    return json.loads(df[0:: step].to_json())
+    return json.loads(df[0::step].to_json())

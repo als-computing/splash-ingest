@@ -9,11 +9,11 @@ from pymongo import MongoClient
 from pymongo.collection import Collection
 from passlib.hash import pbkdf2_sha256
 
-logger = logging.getLogger('splash_ingest.api')
+logger = logging.getLogger("splash_ingest.api")
 
 
 @dataclass
-class ServiceContext():
+class ServiceContext:
     db: MongoClient = None
     api_client_collection: Collection = None
 
@@ -23,7 +23,7 @@ context = ServiceContext()
 
 def init_api_service(db: MongoClient):
     context.db = db
-    context.api_client_collection = db['api_clients']
+    context.api_client_collection = db["api_clients"]
 
 
 class APIClient(BaseModel):
@@ -45,7 +45,9 @@ def create_api_client(submitter: str, client: str, api: str) -> str:
 
 
 def verify_api_key(key):
-    for api_client in get_api_clients('sys'):  # looping through all clients is inefficient, but list issmall
+    for api_client in get_api_clients(
+        "sys"
+    ):  # looping through all clients is inefficient, but list issmall
         if pbkdf2_sha256.verify(key, api_client.hashed_key):
             return api_client
     return None

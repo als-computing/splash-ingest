@@ -14,12 +14,9 @@ from splash_ingest.server.ingest_service import (
     create_job,
     find_job,
     find_unstarted_jobs,
-    create_mapping,
-    find_mapping,
     JobNotFoundError,
 )
 
-from splash_ingest.model import Mapping
 from .model import Job, IngestType
 
 API_KEY_NAME = "api_key"
@@ -173,45 +170,3 @@ async def get_unstarted_jobs(
 class CreateMappingResponse(BaseModel):
     mapping_id: str
     message: str
-
-
-@app.post(
-    "/api/ingest/mappings",
-    tags=["mappings"],
-    response_model=CreateMappingResponse,
-    response_description="Information about the creation of the Mapping",
-)
-async def insert_mapping(
-    mapping: Mapping, api_key: APIKey = Depends(get_api_key_from_request)
-) -> CreateMappingResponse:
-    try:
-        client_key: APIKey = verify_api_key(api_key)
-        if not client_key:
-            logger.info("forbidden  {api_key}")
-            raise HTTPException(status_code=403)
-        mapping_id = create_mapping(client_key.client, mapping)
-        return CreateMappingResponse(mapping_id=mapping_id, message="success")
-    except Exception as e:
-        logger.error(e)
-        raise e
-
-
-@app.get(
-    "/api/ingest/mappings/{mapping_id}",
-    tags=["mappings"],
-    response_model=Mapping,
-    response_description="Return a Mapping",
-)
-async def get_mapping(
-    mapping_id: str, api_key: APIKey = Depends(get_api_key_from_request)
-) -> Mapping:
-    try:
-        client_key: APIKey = verify_api_key(api_key)
-        if not client_key:
-            logger.info("forbidden  {api_key}")
-            raise HTTPException(status_code=403)
-        mapping = find_mapping(client_key.client, mapping_id)
-        return mapping
-    except Exception as e:
-        logger.error(e)
-        raise e

@@ -5,7 +5,6 @@ The splash ingest service is split into several containers.
 
 - **client** Restful API client sending job requests
 - **ingest_service**  A RESTFul service for creating and display status of jobs and mapping files
-- **ingest_mappings** A MongoDB Collection that stores configured mapping files, a guide to ingestion
 - **ingest_jobs** A MongoDB Collection that stores information about Jobs
 - **poller** A python process that polls for new jobs from the **ingest_jobs** collection and performs ingestions
 

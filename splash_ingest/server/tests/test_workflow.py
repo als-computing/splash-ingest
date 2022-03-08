@@ -32,11 +32,6 @@ def test_jobs_init():
     ), "test that init creates a collection"
     assert len(service_context.ingest_jobs.index_information()) == 4
 
-    assert (
-        service_context.ingest_mappings is not None
-    ), "test that init creates a collection"
-    assert len(service_context.ingest_mappings.index_information()) == 3
-
 
 def test_job_create():
     document_path = "/foo/bar.hdf5"

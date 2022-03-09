@@ -15,8 +15,7 @@ from pydantic import parse_obj_as
 from pymongo import MongoClient
 from pymongo.collection import Collection
 
-from splash_ingest.model import Mapping
-from .model import IngestType, Job, JobStatus, StatusItem, RevisionStamp
+from .model import IngestType, Job, JobStatus, StatusItem
 
 from splash_ingest.ingestors.utils import Issue, Severity
 
@@ -35,7 +34,6 @@ class JobNotFoundError(Exception):
 class ServiceMongoCollectionsContext:
     db: MongoClient = None
     ingest_jobs: Collection = None
-    ingest_mappings: Collection = None
 
 
 service_context = ServiceMongoCollectionsContext()
@@ -52,21 +50,6 @@ def init_ingest_service(ingest_db: MongoClient, ingestors_dir: Path = None):
     service_context.ingest_jobs.create_index([("status", -1)])
 
     service_context.ingest_jobs.create_index(
-        [
-            ("id", 1),
-        ],
-        unique=True,
-    )
-
-    service_context.ingest_mappings = ingest_db["ingest_mappings"]
-    service_context.ingest_mappings.create_index(
-        [
-            ("name", -1),
-            ("version", -1),
-        ],
-        unique=True,
-    )
-    service_context.ingest_mappings.create_index(
         [
             ("id", 1),
         ],
@@ -139,23 +122,6 @@ def set_job_status(job_id, status_item: StatusItem):
         {"id": job_id}, {"$push": {"status_history": status_item.dict()}}
     )
     return update_result.modified_count == 1
-
-
-def find_mapping(submitter, mapping_id: str) -> Mapping:
-    mapping_dict = service_context.ingest_mappings.find_one({"name": mapping_id})
-    if mapping_dict is None:
-        return None
-    return Mapping(**mapping_dict)
-
-
-def create_mapping(submitter, mapping: Mapping):
-    id = str(uuid4())
-    revision = RevisionStamp(user=submitter, time=datetime.utcnow(), version_id=id)
-    insert_dict = mapping.dict()
-    insert_dict["id"] = id
-    insert_dict["revision"] = revision.dict()
-    service_context.ingest_mappings.insert_one(insert_dict)
-    return id
 
 
 def poll_for_new_jobs(

@@ -26,7 +26,7 @@ from splash_ingest.ingestors.utils import Issue, Severity
 
 ingest_spec = "als832_dx_3"
 
-logger = logging.getLogger("splash_ingest")
+logger = logging.getLogger("scicat_ingest")
 
 
 def ingest(
@@ -87,16 +87,21 @@ def upload_raw_dataset(
     file_name = scicat_metadata.get("/measurement/sample/file_name")
     description = build_search_terms(file_name)
     appended_keywords = description.split()
+
     dataset = RawDataset(
-        owner=scicat_metadata.get("/measurement/sample/experiment/pi"),
-        contactEmail=scicat_metadata.get("/measurement/sample/experimenter/email"),
-        creationLocation=scicat_metadata.get("/measurement/instrument/instrument_name"),
+        owner=scicat_metadata.get("/measurement/sample/experiment/pi") or "Unknown",
+        contactEmail=scicat_metadata.get("/measurement/sample/experimenter/email")
+        or "Unknown",
+        creationLocation=scicat_metadata.get("/measurement/instrument/instrument_name")
+        or "Unknown",
         datasetName=file_name,
         type=DatasetType.raw,
-        instrumentId=scicat_metadata.get("/measurement/instrument/instrument_name"),
+        instrumentId=scicat_metadata.get("/measurement/instrument/instrument_name")
+        or "Unknown",
         proposalId=scicat_metadata.get("/measurement/sample/experiment/proposal"),
         dataFormat="DX",
-        principalInvestigator=scicat_metadata.get("/measurement/sample/experiment/pi"),
+        principalInvestigator=scicat_metadata.get("/measurement/sample/experiment/pi")
+        or "Unknown",
         sourceFolder=str(file_path.parent),
         size=file_size,
         scientificMetadata=scientific_metadata,

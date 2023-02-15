@@ -16,6 +16,10 @@ can_debug = logger.isEnabledFor(logging.DEBUG)
 
 class NPArrayEncoder(json.JSONEncoder):
     def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        if isinstance(obj, np.floating):
+            return float(obj)
         if isinstance(obj, np.ndarray):
             return [None if np.isnan(item) else item for item in obj]
         return json.JSONEncoder.default(self, obj)

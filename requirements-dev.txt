@@ -1,5 +1,5 @@
-databroker
 flake8
 mongomock
 pytest
 requests-mock
+httpx==0.23.3

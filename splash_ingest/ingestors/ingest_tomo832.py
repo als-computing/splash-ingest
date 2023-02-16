@@ -154,7 +154,7 @@ def upload_attachment(
     attachment = Attachment(
         datasetId=dataset_id,
         thumbnail=encoded_thumnbnail,
-        caption="scattering image",
+        caption="raw image",
         **ownable.dict(),
     )
     scicat_client.upload_attachment(attachment)

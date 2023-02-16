@@ -1,6 +1,7 @@
 fastapi
 h5py>=3
 numpy
+pandas
 passlib
 Pillow
 pydantic

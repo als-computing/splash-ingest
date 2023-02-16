@@ -210,6 +210,8 @@ def _get_data_sample(file, sample_size=10):
         if not data_array:
             continue
         step_size = int(len(data_array) / sample_size)
+        if step_size == 0:
+            step_size = 1
         sample = data_array[0::step_size]
         data_sample[key] = sample
 

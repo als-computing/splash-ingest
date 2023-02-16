@@ -5,7 +5,7 @@ pandas
 passlib
 Pillow
 pydantic
-pyscicat
+pyscicat==0.2.6
 pytz
 suitcase-jsonl
 tzlocal

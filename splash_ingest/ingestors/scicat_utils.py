@@ -21,7 +21,7 @@ class NPArrayEncoder(json.JSONEncoder):
         if isinstance(obj, np.floating):
             return float(obj)
         if isinstance(obj, np.ndarray):
-            return [None if np.isnan(item) else item for item in obj]
+            return [None if np.isnan(item) or np.isinf(item) else item for item in obj]
         return json.JSONEncoder.default(self, obj)
 
 

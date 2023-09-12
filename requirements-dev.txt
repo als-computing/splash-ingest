@@ -2,4 +2,4 @@ flake8
 mongomock
 pytest
 requests-mock
-httpx==0.24.1
+httpx==0.25.0

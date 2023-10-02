@@ -1,12 +1,8 @@
 fastapi
-h5py>=3
+h5py
 numpy
 pandas
 passlib
 Pillow
-pydantic
-pyscicat==0.2.6
+pyscicat @ git+https://github.com/dylanmcreynolds/pyscicat@small_fixes
 pytz
-suitcase-jsonl
-tzlocal
-zmq

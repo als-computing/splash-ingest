@@ -8,6 +8,7 @@ import h5py
 from pyscicat.client import ScicatClient
 from pyscicat.model import (
     Attachment,
+    CreateDatasetOrigDatablockDto,
     Datablock,
     DataFile,
     RawDataset,
@@ -90,7 +91,7 @@ def upload_raw_dataset(
 
     dataset = RawDataset(
         owner=scicat_metadata.get("/measurement/sample/experiment/pi") or "Unknown",
-        contactEmail=scicat_metadata.get("/measurement/sample/experimenter/email")
+        contactEmail=clean_email(scicat_metadata.get("/measurement/sample/experimenter/email"))
         or "Unknown",
         creationLocation=scicat_metadata.get("/measurement/instrument/instrument_name")
         or "Unknown",
@@ -110,9 +111,9 @@ def upload_raw_dataset(
         description=description,
         keywords=appended_keywords,
         creationTime=file_mod_time,
-        **ownable.dict(),
+        **ownable.model_dump(),
     )
-    dataset_id = scicat_client.upload_raw_dataset(dataset)
+    dataset_id = scicat_client.upload_new_dataset(dataset)
     return dataset_id
 
 
@@ -132,16 +133,14 @@ def create_data_files(file_path: Path) -> List[DataFile]:
 def upload_data_block(
     scicat_client: ScicatClient, file_path: Path, dataset_id: str, ownable: Ownable
 ) -> Datablock:
-    "Creates a datablock of fits files"
+    "Creates a datablock of files"
     datafiles = create_data_files(file_path)
 
-    datablock = Datablock(
-        datasetId=dataset_id,
+    datablock = CreateDatasetOrigDatablockDto(
         size=get_file_size(file_path),
-        dataFileList=datafiles,
-        **ownable.dict(),
+        dataFileList=datafiles
     )
-    scicat_client.upload_datablock(datablock)
+    return scicat_client.upload_dataset_origdatablock(dataset_id, datablock)
 
 
 def upload_attachment(
@@ -155,7 +154,7 @@ def upload_attachment(
         datasetId=dataset_id,
         thumbnail=encoded_thumnbnail,
         caption="raw image",
-        **ownable.dict(),
+        **ownable.model_dump(),
     )
     scicat_client.upload_attachment(attachment)
 
@@ -165,7 +164,7 @@ def get_file_size(file_path: Path) -> int:
 
 
 def get_file_mod_time(file_path: Path) -> str:
-    return str(datetime.fromtimestamp(file_path.lstat().st_mtime))
+    return datetime.fromtimestamp(file_path.lstat().st_mtime).isoformat()
 
 
 def _extract_fields(file, keys, issues) -> Dict[str, Any]:
@@ -216,6 +215,11 @@ def _get_data_sample(file, sample_size=10):
         data_sample[key] = sample
 
     return data_sample
+
+def clean_email(email: str):
+    if email:
+        return email.replace(" ", "").replace(",", "").replace("'", "")
+    return None
 
 
 scicat_metadata_keys = [
@@ -291,3 +295,18 @@ data_sample_keys = [
     "/measurement/instrument/monochromator/setup/turret2",
     "/measurement/instrument/monochromator/setup/turret1",
 ]
+
+
+if __name__ == "__main__":
+    ingest(
+        ScicatClient(
+            "http://localhost:3000/api/v3",
+            None,
+            "ingestor",
+            "aman"
+        ),
+        "admin",
+        "/Users/dylanmcreynolds/data/beamlines/8.3.2/20230927_165759_ddd.h5",
+        Path("/Users/dylanmcreynolds/data/beamlines/8.3.2/thumbnails"),
+        [],
+    )

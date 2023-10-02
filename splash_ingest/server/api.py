@@ -101,7 +101,7 @@ class CreateJobRequest(BaseModel):
 
 class CreateJobResponse(BaseModel):
     message: str = Field(description="return message")
-    job_id: Optional[str] = Field(description="uid of newly created job, if created")
+    job_id: Optional[str] = Field(None, description="uid of newly created job, if created")
 
 
 @app.post(

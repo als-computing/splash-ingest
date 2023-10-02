@@ -1,9 +1,8 @@
-fastapi==0.103.2
-h5py==3.9.0
-numpy==1.26.0
-pandas==2.1.1
-passlib==1.7.4
-Pillow==10.0.1
-pydantic==2.4.2
+fastapi
+h5py
+numpy
+pandas
+passlib
+Pillow
 pyscicat @ git+https://github.com/dylanmcreynolds/pyscicat@small_fixes
-pytz==2023.3.post1
+pytz

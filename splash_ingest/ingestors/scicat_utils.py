@@ -47,7 +47,7 @@ def calculate_access_controls(username, beamline, proposal) -> Dict:
 
 
 def build_search_terms(sample_name):
-    """exctract search terms from sample name to provide something pleasing to search on"""
+    """extract search terms from sample name to provide something pleasing to search on"""
     terms = re.split("[^a-zA-Z0-9]", sample_name)
     description = [term.lower() for term in terms if len(term) > 0]
     return " ".join(description)

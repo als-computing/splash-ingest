@@ -30,9 +30,9 @@ class JobStatus(str, Enum):
 class StatusItem(BaseModel):
     time: datetime
     status: JobStatus
-    log: Optional[str]
+    log: Optional[str] = None
     submitter: str
-    issues: Optional[List[Issue]]
+    issues: Optional[List[Issue]] = None
 
 
 class Job(BaseModel):
@@ -43,9 +43,9 @@ class Job(BaseModel):
     document_path: str
     status: JobStatus = None
     mapping_id: Optional[str] = None
-    submitter: Optional[str]
+    submitter: Optional[str] = None
     status_history: Optional[List[StatusItem]] = []
-    ingest_types: Optional[List[IngestType]]
+    ingest_types: Optional[List[IngestType]] = None
 
 
 class Entity(BaseModel):

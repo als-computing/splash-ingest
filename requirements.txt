@@ -1,12 +1,9 @@
-fastapi
-h5py>=3
-numpy
-pandas
-passlib
-Pillow
-pydantic
-pyscicat==0.2.6
-pytz
-suitcase-jsonl
-tzlocal
-zmq
+fastapi==0.103.2
+h5py==3.9.0
+numpy==1.26.0
+pandas==2.1.1
+passlib==1.7.4
+Pillow==10.0.1
+pydantic==2.4.2
+pyscicat @ git+https://github.com/dylanmcreynolds/pyscicat/tree/small_fixes@new_scicat
+pytz==2023.3.post1
